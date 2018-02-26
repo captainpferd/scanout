@@ -101,7 +101,7 @@ public class MainActivity extends AppCompatActivity {
                             .disableSSLVerification()
                             .build();
 
-                    Log.i("realm", "config built");
+                    Log.i("realm", "config built - leaving async");
 
                 }
 
@@ -118,25 +118,11 @@ public class MainActivity extends AppCompatActivity {
                 e.printStackTrace();
             }
 
-            // Use the config
+            // Get the realm instance
             database = Realm.getInstance(config);
             Log.i("realm", "realm retrieved");
 
-            database.beginTransaction();
-            Log.i("realm", "transaction started");
-
-            Student testStudent = database.createObject(Student.class);
-            testStudent.name = "John Smith";
-            testStudent.timeOut = "2PM";
-
-            Log.i("realm", "Object built");
-            database.commitTransaction();
-
-            database.close();
-            Log.i("realm", "all realm tasks done");
-
-
-            //Permission granted
+            //Permission granted, start the QR scanner
             startQRCodeScanner();
         }
 
