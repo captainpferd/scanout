@@ -26,6 +26,9 @@ import com.google.android.gms.vision.barcode.Barcode;
 import com.google.android.gms.vision.barcode.BarcodeDetector;
 
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
 
 import io.realm.*;
 
@@ -241,10 +244,42 @@ public class MainActivity extends AppCompatActivity {
                     qrCodeContents.post(new Runnable() {
                         @Override
                         public void run() {
+
+                            final String studentName = barcodes.valueAt(0).displayValue;
                             //Set textview to show the QR code contents
-                            qrCodeContents.setText(barcodes.valueAt(0).displayValue);
+
+                            Log.i("realm", "Found a QR code, setting TextView to it");
+                            qrCodeContents.setText(studentName);
+
+                            //Get destination first to give the user the chance to quit before creating the realm entry
+                            //TODO: Handle destination
+
+                            //Send student information asynchronously to Realm
+                            Log.i("realm", "Executing transaction to the database");
+                            database.executeTransaction(new Realm.Transaction() {
+                                @Override
+                                public void execute(Realm database) {
+
+                                    Log.i("realm", "Creating student object");
+                                    Student student = database.createObject(Student.class);
+
+
+                                    student.date = new SimpleDateFormat("MM-dd-yyyy", Locale.US).format(new Date());
+
+                                    student.timeOut = new SimpleDateFormat("HH-mm-ss", Locale.US).format(new Date());
+
+                                    student.name = studentName;
+
+                                    Log.i("realm", "added all properties to object - Object is fully committed?");
+
+                                }
+
+                            });
+
                         }
+
                     });
+                    Log.i("realm", "Thread ends when another QR code is scanned?");
                 }
             }
         });
@@ -255,5 +290,6 @@ public class MainActivity extends AppCompatActivity {
         super.onDestroy();
         cameraPreview.release();
         barcodeDetector.release();
+        database.close();
     }
 }

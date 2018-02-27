@@ -1,9 +1,5 @@
 package org.asdnh.attendancescanner;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Locale;
-
 import io.realm.RealmObject;
 
 /**
@@ -19,8 +15,6 @@ public class Student extends RealmObject{
     public String timeIn;
 
     public Student() {
-
-        date = "????";
 
     }
 
