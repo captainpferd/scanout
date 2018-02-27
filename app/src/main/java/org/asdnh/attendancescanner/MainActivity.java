@@ -47,7 +47,9 @@ public class MainActivity extends AppCompatActivity {
     private SyncCredentials myCredentials;
     private SyncUser user;
     private SyncConfiguration config;
-    private static final int MY_PERMISSIONS_REQUEST_CAMERA = 1;
+    private final int MY_PERMISSIONS_REQUEST_CAMERA = 1;
+    private final int DESTINATION_REQUEST = 1;
+
 
 
     @Override
@@ -187,6 +189,7 @@ public class MainActivity extends AppCompatActivity {
     //Display camera and scan for QR codes in method
     public void startQRCodeScanner() {
 
+        Log.i("realm", "Start QR scanner running");
         //Barcode Detector to receive images from the camera and check for QR codes
         barcodeDetector = new BarcodeDetector.Builder(this)
                 .setBarcodeFormats(Barcode.QR_CODE)
@@ -242,80 +245,37 @@ public class MainActivity extends AppCompatActivity {
                 //If any codes are found, set their contents to display in the text view
                 if (barcodes.size() != 0) {
 
-                    //Name of the student stored in the QR code
-                    final String studentName = barcodes.valueAt(0).displayValue;
+                    //Stop the camera to prevent multiple scans?
+                    Log.i("realm", "releasing barcode detector");
+                    barcodeDetector.release();
 
+                    Log.i("realm", "Entering .post() method");
 
-                    //Thread to handle destination and realm selection
-                    Thread t = new Thread(new Runnable() {
-
-                        @Override
-                        public void run() {
-
-                            //Get destination first to give the user the chance to quit before creating the realm entry
-                            //TODO: Handle destination
-
-                            //Start destination activity to get destination as result
-                            Intent getDestinationIntent = new Intent(getApplicationContext(), DestinationActivity.class);
-
-
-                            //Send student information asynchronously to Realm
-                            Log.i("realm", "Executing transaction to the database");
-                            database.executeTransaction(new Realm.Transaction() {
-                                @Override
-                                public void execute(Realm database) {
-
-                                    Log.i("realm", "Creating student object");
-                                    Student student = database.createObject(Student.class);
-
-                                    student.date = new SimpleDateFormat("MM-dd-yyyy", Locale.US).format(new Date());
-
-                                    student.timeOut = new SimpleDateFormat("HH-mm-ss", Locale.US).format(new Date());
-
-                                    student.name = studentName;
-
-                                    Log.i("realm", "added all properties to object - Object is fully committed?");
-
-                                }
-
-                            });
-
-                        }
-
-                    });
-
-                    //Start the realm thread
-                    t.run();
-
-                    Log.i("realm", "Realm thread started");
-
-                    //Try to wait for the realm thread to finish
-                    try {
-                        t.join();
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-
-                    Log.i("realm", "Realm thread done");
-
-
-                    //Post contents of QR code to the textview
                     qrCodeContents.post(new Runnable() {
                         @Override
                         public void run() {
 
+                            Log.i("realm", "Entered .post() method");
+
+                            final String studentName = barcodes.valueAt(0).displayValue;
                             //Set textview to show the QR code contents
 
                             Log.i("realm", "Found a QR code, setting TextView to it");
                             qrCodeContents.setText(studentName);
 
+                            //Start destination activity to get destination as result
+                            Intent getDestinationIntent = new Intent(getApplicationContext(), DestinationActivity.class);
+
+                            getDestinationIntent.putExtra("name", studentName);
+
+                            Log.i("realm", "Starting destination activity");
+                            startActivityForResult(getDestinationIntent, DESTINATION_REQUEST);
+
+
                         }
 
                     });
-
                     Log.i("realm", "Thread ends when another QR code is scanned?");
-
-
                 }
             }
         });
@@ -323,9 +283,56 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+
+        //Release resources
         super.onDestroy();
         cameraPreview.release();
         barcodeDetector.release();
         database.close();
+    }
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent getDestinationIntent) {
+        Log.i("realm", "Made it back to onActivityResult");
+
+        super.onActivityResult(requestCode, resultCode, getDestinationIntent);
+
+        if(requestCode == DESTINATION_REQUEST) {
+
+            if(resultCode == RESULT_OK) {
+                final String destination = getDestinationIntent.getStringExtra("destination");
+
+
+                Log.i("realm", "This is the destination received" + destination);
+
+                database.executeTransaction(new Realm.Transaction() {
+                    @Override
+                    public void execute(Realm database) {
+
+                        Log.i("realm", "Creating student object");
+                        Student student = database.createObject(Student.class);
+
+                        student.date = new SimpleDateFormat("MM-dd-yyyy", Locale.US).format(new Date());
+
+                        student.timeOut = new SimpleDateFormat("HH-mm-ss", Locale.US).format(new Date());
+
+                        student.name = "Destination Debug name";
+
+                        student.destination = destination;
+
+                        Log.i("realm", "added all properties to object - Object is fully committed?");
+
+                    }
+
+                });
+
+            }
+        }
+
+        Log.i("realm", "Calling QR scan to rebuilt detector");
+
+        startQRCodeScanner();
+        Log.i("realm", "Leaving onActivityResult");
+
     }
 }
