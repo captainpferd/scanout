@@ -2,8 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="org.asdnh.attendancescanner">
 
-    <!-- For scanning QR codes !-->
-<uses-permission android:name="android.permission.CAMERA"/>
+    <!-- For scanning QR codes ! -->
+    <uses-permission android:name="android.permission.CAMERA" />
 
     <application
         android:allowBackup="true"
@@ -29,6 +29,15 @@
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value="MainActivity" />
+        </activity>
+        <activity
+            android:name=".DestinationActivity"
+            android:label="@string/title_activity_destination"
+            android:parentActivityName=".MainActivity"
+            android:theme="@style/AppTheme.NoActionBar">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value="org.asdnh.attendancescanner.MainActivity" />
         </activity>
     </application>
 

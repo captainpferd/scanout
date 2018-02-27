@@ -86,5 +86,6 @@
 
     <!-- Default realm server url -->
     <string name="default_realm">https://senior-project-realm.us1.cloud.realm.io</string>
+    <string name="title_activity_destination">DestinationActivity</string>
 
 </resources>

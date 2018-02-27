@@ -241,18 +241,23 @@ public class MainActivity extends AppCompatActivity {
 
                 //If any codes are found, set their contents to display in the text view
                 if (barcodes.size() != 0) {
-                    qrCodeContents.post(new Runnable() {
+
+                    //Name of the student stored in the QR code
+                    final String studentName = barcodes.valueAt(0).displayValue;
+
+
+                    //Thread to handle destination and realm selection
+                    Thread t = new Thread(new Runnable() {
+
                         @Override
                         public void run() {
 
-                            final String studentName = barcodes.valueAt(0).displayValue;
-                            //Set textview to show the QR code contents
-
-                            Log.i("realm", "Found a QR code, setting TextView to it");
-                            qrCodeContents.setText(studentName);
-
                             //Get destination first to give the user the chance to quit before creating the realm entry
                             //TODO: Handle destination
+
+                            //Start destination activity to get destination as result
+                            Intent getDestinationIntent = new Intent(getApplicationContext(), DestinationActivity.class);
+
 
                             //Send student information asynchronously to Realm
                             Log.i("realm", "Executing transaction to the database");
@@ -262,7 +267,6 @@ public class MainActivity extends AppCompatActivity {
 
                                     Log.i("realm", "Creating student object");
                                     Student student = database.createObject(Student.class);
-
 
                                     student.date = new SimpleDateFormat("MM-dd-yyyy", Locale.US).format(new Date());
 
@@ -279,7 +283,39 @@ public class MainActivity extends AppCompatActivity {
                         }
 
                     });
+
+                    //Start the realm thread
+                    t.run();
+
+                    Log.i("realm", "Realm thread started");
+
+                    //Try to wait for the realm thread to finish
+                    try {
+                        t.join();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+
+                    Log.i("realm", "Realm thread done");
+
+
+                    //Post contents of QR code to the textview
+                    qrCodeContents.post(new Runnable() {
+                        @Override
+                        public void run() {
+
+                            //Set textview to show the QR code contents
+
+                            Log.i("realm", "Found a QR code, setting TextView to it");
+                            qrCodeContents.setText(studentName);
+
+                        }
+
+                    });
+
                     Log.i("realm", "Thread ends when another QR code is scanned?");
+
+
                 }
             }
         });
