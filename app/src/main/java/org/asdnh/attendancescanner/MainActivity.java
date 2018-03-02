@@ -48,13 +48,13 @@ public class MainActivity extends AppCompatActivity {
     //Realm database instance
     private Realm database;
     private SyncUser user;
+    boolean loginGood;
 
     //Permissions request
     private final int MY_PERMISSIONS_REQUEST_CAMERA = 1;
 
     //Request code for destination activity
     private final int DESTINATION_REQUEST = 1;
-
 
 
     @Override
@@ -96,56 +96,98 @@ public class MainActivity extends AppCompatActivity {
             //Check for a valid user
             user = SyncUser.currentUser();
 
-            //If user is null, log in again
+            //If user is null (expired), log in again
             if(user == null) {
 
+                Log.i("realm", "User is not valid");
+
                 //Create credentials to log in
-                SyncCredentials myCredentials = SyncCredentials.usernamePassword("jr_sr_client", "asdrocks", false);
+                final SyncCredentials myCredentials = SyncCredentials.usernamePassword("jr_sr_client", "asdrocks", false);
 
-
-                //Log into realm asynchronously to improve load time
-                Log.i("realm", "entered async thread - attempting to log in");
-                SyncUser.loginAsync(myCredentials, AUTH_URL, new SyncUser.Callback<SyncUser>() {
+                //Log in in a new thread so the program can be paused during its execution
+                Thread t = new Thread(new Runnable() {
 
                     @Override
-                    public void onSuccess(@Nonnull SyncUser result) {
+                    public void run() {
 
-                        //Assign the user created to the class variable
-                        Log.i("realm", "logged in");
-                        user = result;
+                        //Log into realm only if the current user is expired
+                        Log.i("realm", "entered async thread - attempting to log in");
 
-                    }
+                        //Attempt to log in, catch an exception of there is no internet
+                        try {
 
+                            user = SyncUser.login(myCredentials, AUTH_URL);
 
-                    //Occurs when the user's credentials have expired and internet is not available
-                    @Override
-                    public void onError(@Nonnull ObjectServerError error) {
+                            //Assign the user created to the class variable
+                            Log.i("realm", "logged in");
 
-                        //Print an error message to the log and quit the application of the realm cannot be retrieved
-                        error.printStackTrace();
+                            //Login is valid
+                            loginGood = true;
 
-                        //Show a message explaining the issue
-                        Snackbar snackbar = Snackbar.make(coordinatorLayout, "Credentials expired and internet needed to log in", Snackbar.LENGTH_INDEFINITE);
-                        snackbar.show();
+                        //Occurs when the user's credentials have expired and internet is not available
+                        } catch (ObjectServerError error) {
+
+                            //Print an error message to the log and quit the application of the realm cannot be retrieved
+                            error.printStackTrace();
+
+                           Log.i("realm", "Failed to log in to realm");
+
+                            //Show a message explaining the issue
+                            Snackbar snackbar = Snackbar.make(coordinatorLayout, R.string.internet_warning, Snackbar.LENGTH_INDEFINITE);
+                            snackbar.show();
+
+                            //Set valid login to false
+                            loginGood = false;
+
+                        }
 
                     }
 
 
                 });
 
+                //Run thread and wait for results
+                t.start();
+
+                //Try to wait for results, catch an exception if thread is interrupted
+                try {
+
+                    t.join();
+
+                } catch (InterruptedException e) {
+
+                    //Login was unsuccessful
+                    loginGood = false;
+                    e.printStackTrace();
+
+                }
+
+            } else {
+
+                //Login is good
+                loginGood = true;
+
             }
 
-            //Build realm database configuration
-            SyncConfiguration config = new SyncConfiguration.Builder(user, REALM_BASE_URL + "/~/log")
-                    .disableSSLVerification()
-                    .build();
+            //Continue with app only if login is good
+            if(loginGood) {
 
-            // Get the realm instance
-            database = Realm.getInstance(config);
-            Log.i("realm", "realm retrieved, leaving async task");
+                Log.i("realm", "user is valid");
 
-            //Start scanning QR codes
-            startQRCodeScanner();
+                //Build realm database configuration
+                SyncConfiguration config = new SyncConfiguration.Builder(user, REALM_BASE_URL + "/~/log")
+                        .disableSSLVerification()
+                        .build();
+
+                // Get the realm instance
+                database = Realm.getInstance(config);
+                Log.i("realm", "realm retrieved");
+
+
+                //Start scanning QR codes
+                startQRCodeScanner();
+
+            }
         }
 
     }
@@ -166,8 +208,8 @@ public class MainActivity extends AppCompatActivity {
                 if(grantResults.length > 0
                         && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
 
-                    //Permission granted
-                    startQRCodeScanner();
+                    //Permission granted, recreate activity
+                    recreate();
 
                 } else {
 
@@ -259,6 +301,7 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void surfaceDestroyed(SurfaceHolder surfaceHolder) {
+
                 //Stop the camera
                 cameraPreview.stop();
 
@@ -374,12 +417,19 @@ public class MainActivity extends AppCompatActivity {
         //Release resources
         super.onDestroy();
 
-        cameraPreview.release();
+        //Try to release resouces, if they are null they may throw an exception
+        try {
+            cameraPreview.release();
 
-        barcodeDetector.release();
+            barcodeDetector.release();
 
-        //Close the realm database
-        database.close();
+            //Close the realm database
+            database.close();
+
+        } catch (NullPointerException e) {
+            //Do nothing if those resources are null
+        }
+
     }
 
 
@@ -435,7 +485,7 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        Log.i("realm", "Calling QR scan to rebuilt detector");
+        Log.i("realm", "Calling QR scan to rebuild detector");
 
         //Restart the QR code scanner
         startQRCodeScanner();
@@ -443,4 +493,6 @@ public class MainActivity extends AppCompatActivity {
         Log.i("realm", "Leaving onActivityResult");
 
     }
+
+
 }

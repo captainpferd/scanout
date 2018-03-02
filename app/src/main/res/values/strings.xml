@@ -100,4 +100,7 @@
     <string name="nurse_button_text">Nurse</string>
     <string name="other_button_text">Other</string>
 
+    <!-- Internet Warning -->
+    <string name="internet_warning">Credentials new or expired and internet needed to log in.</string>
+
 </resources>
