@@ -23,8 +23,16 @@ public class DestinationActivity extends AppCompatActivity {
 
         //Set activity title to student name
         Intent studentName = getIntent();
+
+        intent = new Intent();
+
+        String name = studentName.getStringExtra("name");
+
+        intent.putExtra("name", name);
+
+
         try {
-            this.setTitle(studentName.getStringExtra("name"));
+            this.setTitle(name);
         } catch (NullPointerException e) {
             e.printStackTrace();
         }
@@ -35,7 +43,6 @@ public class DestinationActivity extends AppCompatActivity {
         bathroomButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 //TODO: Return "bathroom" as destination
-                intent = new Intent();
                 intent.putExtra("destination", "Bathroom");
                 setResult(RESULT_OK, intent);
                 finish();
@@ -47,7 +54,6 @@ public class DestinationActivity extends AppCompatActivity {
         lockerButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 //TODO: Return "locker" as destination
-                intent = new Intent();
                 intent.putExtra("destination", "Locker");
                 setResult(RESULT_OK, intent);
                 finish();
@@ -58,7 +64,6 @@ public class DestinationActivity extends AppCompatActivity {
         officeButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 //TODO: Return "office" as destination
-                intent = new Intent();
                 intent.putExtra("destination", "Office");
                 setResult(RESULT_OK, intent);
                 finish();
@@ -69,7 +74,6 @@ public class DestinationActivity extends AppCompatActivity {
         nurseButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 //TODO: Return "nurse" as destination
-                intent = new Intent();
                 intent.putExtra("destination", "Nurse");
                 setResult(RESULT_OK, intent);
                 finish();
@@ -80,7 +84,6 @@ public class DestinationActivity extends AppCompatActivity {
         otherButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 //TODO: Return "other" as destination
-                intent = new Intent();
                 intent.putExtra("destination", "Other");
                 setResult(RESULT_OK, intent);
                 finish();

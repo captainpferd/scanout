@@ -59,17 +59,6 @@ public class MainActivity extends AppCompatActivity {
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        /* Unnecessary Button - was here by default
-
-        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
-            }
-        }); */
-
         //Assign the surface view to camera stream
         cameraStream = findViewById(R.id.surfaceView);
 
@@ -94,12 +83,13 @@ public class MainActivity extends AppCompatActivity {
             //TODO: Add Realm Database
             myCredentials = SyncCredentials.usernamePassword("jr_sr_client", "asdrocks", false);
 
-            //Run the network tasks in a separate thread
-            Thread t = new Thread(new Runnable() {
-                public void run() {
+            //Log into realm asynchronously to improve load time
 
-                    Log.i("realm", "entered async thread - attempting to log in");
-                    user = SyncUser.login(myCredentials, AUTH_URL);
+            Log.i("realm", "entered async thread - attempting to log in");
+            SyncUser.loginAsync(myCredentials, AUTH_URL, new SyncUser.Callback<SyncUser>() {
+                @Override
+                public void onSuccess(SyncUser result) {
+                    user = result;
 
                     Log.i("realm", "logged in");
                     config = new SyncConfiguration.Builder(user, REALM_BASE_URL + "/~/log")
@@ -108,24 +98,24 @@ public class MainActivity extends AppCompatActivity {
 
                     Log.i("realm", "config built - leaving async");
 
+
+
+                    // Get the realm instance
+                    database = Realm.getInstance(config);
+                    Log.i("realm", "realm retrieved");
+
+                }
+
+                @Override
+                public void onError(ObjectServerError error) {
+
+                    error.printStackTrace();
+                    finish();
                 }
 
             });
 
-            //Run the new thread
-            t.start();
 
-            //Wait for the thread to finish
-            try {
-                t.join();
-
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-
-            // Get the realm instance
-            database = Realm.getInstance(config);
-            Log.i("realm", "realm retrieved");
 
             //Permission granted, start the QR scanner
             startQRCodeScanner();
@@ -260,16 +250,53 @@ public class MainActivity extends AppCompatActivity {
                             final String studentName = barcodes.valueAt(0).displayValue;
                             //Set textview to show the QR code contents
 
-                            Log.i("realm", "Found a QR code, setting TextView to it");
-                            qrCodeContents.setText(studentName);
+                            //Log.i("realm", "Found a QR code, setting TextView to it");
+                            //qrCodeContents.setText(studentName);
 
-                            //Start destination activity to get destination as result
-                            Intent getDestinationIntent = new Intent(getApplicationContext(), DestinationActivity.class);
+                            Log.i("realm", "Checking to see if the student is already signed out");
 
-                            getDestinationIntent.putExtra("name", studentName);
+                            //Construct the realm query
+                            RealmQuery<Student> query = database.where(Student.class);
 
-                            Log.i("realm", "Starting destination activity");
-                            startActivityForResult(getDestinationIntent, DESTINATION_REQUEST);
+
+                            query.equalTo("name", studentName);
+
+                            query.isNull("timeIn");
+
+                            Student tempStudent = query.findFirst();
+
+
+                            try {
+                                if(tempStudent.destination != null) {
+
+                                    Log.i("realm", "Temp student not null, assigning time in");
+                                    database.beginTransaction();
+
+                                    tempStudent.timeIn = new SimpleDateFormat("HH-mm-ss", Locale.US).format(new Date());
+
+                                    database.commitTransaction();
+
+                                    String welcome = ("Welcome back, " + studentName);
+                                    qrCodeContents.setText(welcome);
+
+                                    Log.i("realm", "Calling onResume");
+                                    //Rebuild barcode detector
+                                    recreate();
+
+
+                                }
+                            } catch (NullPointerException e) {
+                                e.printStackTrace();
+
+                                //Start destination activity to get destination as result
+                                Intent getDestinationIntent = new Intent(getApplicationContext(), DestinationActivity.class);
+
+                                getDestinationIntent.putExtra("name", studentName);
+
+                                Log.i("realm", "Starting destination activity");
+                                startActivityForResult(getDestinationIntent, DESTINATION_REQUEST);
+
+                            }
 
 
                         }
@@ -279,7 +306,21 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
+
+        Log.i("realm", "end of qr code scanning method");
     }
+
+    /*public void reloadScanner() {
+
+        //Assign the surface view to camera stream
+        cameraStream = findViewById(R.id.surfaceView);
+
+        //Assign the text view so it can be accessed by the program
+        qrCodeContents = findViewById(R.id.codeContents);
+
+        startQRCodeScanner();
+
+    }*/
 
     @Override
     protected void onDestroy() {
@@ -302,6 +343,8 @@ public class MainActivity extends AppCompatActivity {
             if(resultCode == RESULT_OK) {
                 final String destination = getDestinationIntent.getStringExtra("destination");
 
+                final String studentName = getDestinationIntent.getStringExtra("name");
+
 
                 Log.i("realm", "This is the destination received" + destination);
 
@@ -316,7 +359,7 @@ public class MainActivity extends AppCompatActivity {
 
                         student.timeOut = new SimpleDateFormat("HH-mm-ss", Locale.US).format(new Date());
 
-                        student.name = "Destination Debug name";
+                        student.name = studentName;
 
                         student.destination = destination;
 
