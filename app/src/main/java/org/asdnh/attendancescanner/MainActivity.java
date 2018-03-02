@@ -1,11 +1,10 @@
 package org.asdnh.attendancescanner;
 
-import android.*;
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
-import android.support.design.widget.FloatingActionButton;
+import android.support.design.widget.CoordinatorLayout;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -15,7 +14,6 @@ import android.util.Log;
 import android.util.SparseArray;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
-import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.TextView;
@@ -30,33 +28,42 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 
+import javax.annotation.Nonnull;
+
 import io.realm.*;
 
 import static org.asdnh.attendancescanner.Constants.*;
-import org.asdnh.attendancescanner.Student;
 
 public class MainActivity extends AppCompatActivity {
 
-    //TODO: Fix variable names/comment for labeling
-    //Global Variables??
+    //QR code scanner resources
     private CameraSource cameraPreview;
     private BarcodeDetector barcodeDetector;
+
+    //Views for text and the camera feed
     private SurfaceView cameraStream;
     private TextView qrCodeContents;
+    private CoordinatorLayout coordinatorLayout;
+
+    //Realm database instance
     private Realm database;
-    private SyncCredentials myCredentials;
     private SyncUser user;
-    private SyncConfiguration config;
+
+    //Permissions request
     private final int MY_PERMISSIONS_REQUEST_CAMERA = 1;
+
+    //Request code for destination activity
     private final int DESTINATION_REQUEST = 1;
 
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
+        //Default configuration
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+        Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
         //Assign the surface view to camera stream
@@ -64,6 +71,9 @@ public class MainActivity extends AppCompatActivity {
 
         //Assign the qr code value to textview
         qrCodeContents = findViewById(R.id.codeContents);
+
+        //Get the coordinator layout
+        coordinatorLayout = findViewById(R.id.coordinator_layout);
 
         //Request/check for permission to use the camera
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
@@ -73,61 +83,79 @@ public class MainActivity extends AppCompatActivity {
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA},
                     MY_PERMISSIONS_REQUEST_CAMERA);
 
+
+            //Permission is granted, proceed with the program
         } else {
 
+            //Initialize Realm
             Log.i("realm", "Calling realm.init");
             Realm.init(this);
 
             Log.i("realm", "Starting to configure realm");
 
-            //TODO: Add Realm Database
-            myCredentials = SyncCredentials.usernamePassword("jr_sr_client", "asdrocks", false);
+            //Check for a valid user
+            user = SyncUser.currentUser();
 
-            //Log into realm asynchronously to improve load time
+            //If user is null, log in again
+            if(user == null) {
 
-            Log.i("realm", "entered async thread - attempting to log in");
-            SyncUser.loginAsync(myCredentials, AUTH_URL, new SyncUser.Callback<SyncUser>() {
-                @Override
-                public void onSuccess(SyncUser result) {
-                    user = result;
-
-                    Log.i("realm", "logged in");
-                    config = new SyncConfiguration.Builder(user, REALM_BASE_URL + "/~/log")
-                            .disableSSLVerification()
-                            .build();
-
-                    Log.i("realm", "config built - leaving async");
+                //Create credentials to log in
+                SyncCredentials myCredentials = SyncCredentials.usernamePassword("jr_sr_client", "asdrocks", false);
 
 
+                //Log into realm asynchronously to improve load time
+                Log.i("realm", "entered async thread - attempting to log in");
+                SyncUser.loginAsync(myCredentials, AUTH_URL, new SyncUser.Callback<SyncUser>() {
 
-                    // Get the realm instance
-                    database = Realm.getInstance(config);
-                    Log.i("realm", "realm retrieved");
+                    @Override
+                    public void onSuccess(@Nonnull SyncUser result) {
 
-                }
+                        //Assign the user created to the class variable
+                        Log.i("realm", "logged in");
+                        user = result;
 
-                @Override
-                public void onError(ObjectServerError error) {
-
-                    error.printStackTrace();
-                    finish();
-                }
-
-            });
+                    }
 
 
+                    //Occurs when the user's credentials have expired and internet is not available
+                    @Override
+                    public void onError(@Nonnull ObjectServerError error) {
 
-            //Permission granted, start the QR scanner
+                        //Print an error message to the log and quit the application of the realm cannot be retrieved
+                        error.printStackTrace();
+
+                        //Show a message explaining the issue
+                        Snackbar snackbar = Snackbar.make(coordinatorLayout, "Credentials expired and internet needed to log in", Snackbar.LENGTH_INDEFINITE);
+                        snackbar.show();
+
+                    }
+
+
+                });
+
+            }
+
+            //Build realm database configuration
+            SyncConfiguration config = new SyncConfiguration.Builder(user, REALM_BASE_URL + "/~/log")
+                    .disableSSLVerification()
+                    .build();
+
+            // Get the realm instance
+            database = Realm.getInstance(config);
+            Log.i("realm", "realm retrieved, leaving async task");
+
+            //Start scanning QR codes
             startQRCodeScanner();
         }
 
     }
 
+
     /* Method to handle result of permissions request
      *
      */
     @Override
-    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
+    public void onRequestPermissionsResult(int requestCode, @Nonnull String permissions[], @Nonnull int[] grantResults) {
 
         //Switch statement to check for each permission requested
         switch(requestCode) {
@@ -147,20 +175,24 @@ public class MainActivity extends AppCompatActivity {
                     qrCodeContents.setText(getString(R.string.camera_denied));
                 }
 
-                return;
             }
         }
     }
 
+    //Automatically generated
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
+
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_main, menu);
         return true;
+
     }
 
+    //Automatically generated
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
+
         // Handle action bar item clicks here. The action bar will
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
@@ -174,42 +206,56 @@ public class MainActivity extends AppCompatActivity {
         }
 
         return super.onOptionsItemSelected(item);
+
     }
+
 
     //Display camera and scan for QR codes in method
     public void startQRCodeScanner() {
 
         Log.i("realm", "Start QR scanner running");
+
         //Barcode Detector to receive images from the camera and check for QR codes
         barcodeDetector = new BarcodeDetector.Builder(this)
                 .setBarcodeFormats(Barcode.QR_CODE)
                 .build();
 
-        //TODO: Deal with preview size
         //Camera object to show a preview in the app as well as for use by the barcode detector
         cameraPreview = new CameraSource.Builder(this, barcodeDetector)
-                //.setRequestedPreviewSize(500, 300)
                 .setAutoFocusEnabled(true)
                 .build();
 
         //Attempt to begin streaming the camera preview to the SurfaceView
         cameraStream.getHolder().addCallback(new SurfaceHolder.Callback() {
+
+
             @Override
             public void surfaceCreated(SurfaceHolder surfaceHolder) {
 
-                //TODO: Fix permissions testing
+                //In reality, if this point in the program has been reached
+                //camera permission was granted, so an exception should never be thrown
+                //nonetheless, the compiler thinks otherwise
+
+                //Start the camera preview, catching a security exception if there is not permission to use the camera
                 try {
+
                     cameraPreview.start(cameraStream.getHolder());
+
                 } catch (IOException | SecurityException ex) {
+
                     ex.printStackTrace();
                     Log.e(getString(R.string.perm_error), ex.toString());
+
                 }
             }
 
+
+            //Automatically generated
             @Override
             public void surfaceChanged(SurfaceHolder surfaceHolder, int i, int i1, int i2) {
-                //Left as default
+
             }
+
 
             @Override
             public void surfaceDestroyed(SurfaceHolder surfaceHolder) {
@@ -217,155 +263,172 @@ public class MainActivity extends AppCompatActivity {
                 cameraPreview.stop();
 
             }
+
         });
+
 
         //Process QR codes
         barcodeDetector.setProcessor(new Detector.Processor<Barcode>() {
+
+            //Automatically generated
             @Override
             public void release() {
+
             }
+
 
             //Get detected QR codes
             @Override
             public void receiveDetections(Detector.Detections detections) {
 
                 //Store found codes
-                final SparseArray<Barcode> barcodes = detections.getDetectedItems();
+                final SparseArray<?> barcodes = detections.getDetectedItems();
 
-                //If any codes are found, set their contents to display in the text view
+                //If any codes are found, proceed with the log entry
                 if (barcodes.size() != 0) {
 
-                    //Stop the camera to prevent multiple scans?
+                    //Stop the camera to prevent multiple scans
                     Log.i("realm", "releasing barcode detector");
                     barcodeDetector.release();
 
-                    Log.i("realm", "Entering .post() method");
-
+                    //New task to access the Realm and text view from the UI thread
                     qrCodeContents.post(new Runnable() {
+
+                        //Code to run in the task
                         @Override
                         public void run() {
 
-                            Log.i("realm", "Entered .post() method");
+                            //Cast contents of scanned code as a barcode-type object
+                            Barcode b = (Barcode) barcodes.valueAt(0);
 
-                            final String studentName = barcodes.valueAt(0).displayValue;
-                            //Set textview to show the QR code contents
+                            final String studentName = b.displayValue;
 
-                            //Log.i("realm", "Found a QR code, setting TextView to it");
-                            //qrCodeContents.setText(studentName);
-
+                            /* Construct the realm query
+                             * Find entries in the database where the student name matches the QR code
+                             * and timeIn is null (no sign in time)
+                             * If none are found, object returned is null
+                             * Otherwise, a live reference to that entry in the database is passed
+                             */
                             Log.i("realm", "Checking to see if the student is already signed out");
-
-                            //Construct the realm query
                             RealmQuery<Student> query = database.where(Student.class);
-
 
                             query.equalTo("name", studentName);
 
                             query.isNull("timeIn");
 
+                            //Execute the query
                             Student tempStudent = query.findFirst();
 
-
-                            try {
-                                if(tempStudent.destination != null) {
-
-                                    Log.i("realm", "Temp student not null, assigning time in");
-                                    database.beginTransaction();
-
-                                    tempStudent.timeIn = new SimpleDateFormat("HH-mm-ss", Locale.US).format(new Date());
-
-                                    database.commitTransaction();
-
-                                    String welcome = ("Welcome back, " + studentName);
-                                    qrCodeContents.setText(welcome);
-
-                                    Log.i("realm", "Calling onResume");
-                                    //Rebuild barcode detector
-                                    recreate();
-
-
-                                }
-                            } catch (NullPointerException e) {
-                                e.printStackTrace();
+                            //If the query returns null, create a new student object to sign out
+                            if(tempStudent == null) {
 
                                 //Start destination activity to get destination as result
                                 Intent getDestinationIntent = new Intent(getApplicationContext(), DestinationActivity.class);
 
+                                //Add the student name to set the title of the destination activity
                                 getDestinationIntent.putExtra("name", studentName);
 
+                                //Start the destination activity and call onActivityResult when it finishes
                                 Log.i("realm", "Starting destination activity");
                                 startActivityForResult(getDestinationIntent, DESTINATION_REQUEST);
 
-                            }
 
+                            //If an object was found by the query, then this student needs to sign in
+                            } else {
+
+                                //Start a transaction so changes to the object are reflected in the database
+                                Log.i("realm", "Temp student not null, assigning time in");
+                                database.beginTransaction();
+
+                                //Set the time in to the current time
+                                tempStudent.timeIn = new SimpleDateFormat("HH:mm:ss", Locale.US).format(new Date());
+
+                                //Finish the transaction
+                                database.commitTransaction();
+
+                                //Set a welcome back message so the student knows they have been signed in
+                                String welcome = ("Welcome back, " + studentName);
+                                qrCodeContents.setText(welcome);
+
+                                //The barcode detector was released to stop duplicate scans, so refresh the activity to rebuild it
+                                recreate();
+                            }
 
                         }
 
+
                     });
-                    Log.i("realm", "Thread ends when another QR code is scanned?");
+
                 }
             }
+
+
         });
 
-        Log.i("realm", "end of qr code scanning method");
     }
 
-    /*public void reloadScanner() {
-
-        //Assign the surface view to camera stream
-        cameraStream = findViewById(R.id.surfaceView);
-
-        //Assign the text view so it can be accessed by the program
-        qrCodeContents = findViewById(R.id.codeContents);
-
-        startQRCodeScanner();
-
-    }*/
 
     @Override
     protected void onDestroy() {
 
         //Release resources
         super.onDestroy();
+
         cameraPreview.release();
+
         barcodeDetector.release();
+
+        //Close the realm database
         database.close();
     }
 
+
+    //Method to create a new student object to sign out after they pick their destination
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent getDestinationIntent) {
-        Log.i("realm", "Made it back to onActivityResult");
 
+        Log.i("realm", "Made it back to onActivityResult");
         super.onActivityResult(requestCode, resultCode, getDestinationIntent);
 
+        //If this method was called after the destination request, then sign the student out if there was no error
         if(requestCode == DESTINATION_REQUEST) {
 
+            //Check to make sure the destination activity worked
             if(resultCode == RESULT_OK) {
+
+                //Set destination and student name from the intent returned
                 final String destination = getDestinationIntent.getStringExtra("destination");
 
                 final String studentName = getDestinationIntent.getStringExtra("name");
 
-
                 Log.i("realm", "This is the destination received" + destination);
 
+                //Execute a transaction to the database to store the new object
                 database.executeTransaction(new Realm.Transaction() {
-                    @Override
-                    public void execute(Realm database) {
 
+                    @Override
+                    public void execute(@Nonnull Realm database) {
+
+                        //Create a new student object
                         Log.i("realm", "Creating student object");
                         Student student = database.createObject(Student.class);
 
-                        student.date = new SimpleDateFormat("MM-dd-yyyy", Locale.US).format(new Date());
+                        //Store the date in the date field
+                        student.date = new SimpleDateFormat("MM/dd/yyyy", Locale.US).format(new Date());
 
-                        student.timeOut = new SimpleDateFormat("HH-mm-ss", Locale.US).format(new Date());
+                        //Store the time in the time field
+                        student.timeOut = new SimpleDateFormat("HH:mm:ss", Locale.US).format(new Date());
 
+                        //Store the name in the name field using the name returned from the destination activity
                         student.name = studentName;
 
+                        //Store the destination returned by the destination activity
                         student.destination = destination;
 
-                        Log.i("realm", "added all properties to object - Object is fully committed?");
+                        Log.i("realm", "added all properties to object - Object is fully committed");
 
                     }
+
 
                 });
 
@@ -374,7 +437,9 @@ public class MainActivity extends AppCompatActivity {
 
         Log.i("realm", "Calling QR scan to rebuilt detector");
 
+        //Restart the QR code scanner
         startQRCodeScanner();
+
         Log.i("realm", "Leaving onActivityResult");
 
     }

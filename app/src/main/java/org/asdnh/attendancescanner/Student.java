@@ -2,17 +2,15 @@ package org.asdnh.attendancescanner;
 
 import io.realm.RealmObject;
 
-/**
- * Created by Jared on 2/26/2018.
- */
+// Class to represent a student in the sign out logs
 
 public class Student extends RealmObject{
 
-    public String date;
-    public String name;
-    public String timeOut;
-    public String destination;
-    public String timeIn;
+    String date;
+    String name;
+    String timeOut;
+    String destination;
+    String timeIn;
 
     public Student() {
 
