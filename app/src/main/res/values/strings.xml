@@ -101,6 +101,6 @@
     <string name="other_button_text">Other</string>
 
     <!-- Internet Warning -->
-    <string name="internet_warning">Credentials new or expired and internet needed to log in.</string>
+    <string name="internet_warning">Check your internet connection or database username and password</string>
 
 </resources>

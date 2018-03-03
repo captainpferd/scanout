@@ -2,8 +2,10 @@ package org.asdnh.attendancescanner;
 
 import android.Manifest;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.design.widget.CoordinatorLayout;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
@@ -12,10 +14,10 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.util.SparseArray;
-import android.view.SurfaceHolder;
-import android.view.SurfaceView;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.SurfaceHolder;
+import android.view.SurfaceView;
 import android.widget.TextView;
 
 import com.google.android.gms.vision.CameraSource;
@@ -30,9 +32,15 @@ import java.util.Locale;
 
 import javax.annotation.Nonnull;
 
-import io.realm.*;
+import io.realm.ObjectServerError;
+import io.realm.Realm;
+import io.realm.RealmQuery;
+import io.realm.SyncConfiguration;
+import io.realm.SyncCredentials;
+import io.realm.SyncUser;
 
-import static org.asdnh.attendancescanner.Constants.*;
+import static org.asdnh.attendancescanner.RealmAddress.getAuthUrl;
+import static org.asdnh.attendancescanner.RealmAddress.getRealmBaseUrl;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -45,7 +53,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView qrCodeContents;
     private CoordinatorLayout coordinatorLayout;
 
-    //Realm database instance
+    //Realm resources
     private Realm database;
     private SyncUser user;
     boolean loginGood;
@@ -65,6 +73,9 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+
+        //Get shared preferences
+        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
 
         //Assign the surface view to camera stream
         cameraStream = findViewById(R.id.surfaceView);
@@ -116,7 +127,7 @@ public class MainActivity extends AppCompatActivity {
                         //Attempt to log in, catch an exception of there is no internet
                         try {
 
-                            user = SyncUser.login(myCredentials, AUTH_URL);
+                            user = SyncUser.login(myCredentials, getAuthUrl());
 
                             //Assign the user created to the class variable
                             Log.i("realm", "logged in");
@@ -175,7 +186,7 @@ public class MainActivity extends AppCompatActivity {
                 Log.i("realm", "user is valid");
 
                 //Build realm database configuration
-                SyncConfiguration config = new SyncConfiguration.Builder(user, REALM_BASE_URL + "/~/log")
+                SyncConfiguration config = new SyncConfiguration.Builder(user, getRealmBaseUrl() + "/~/log")
                         .disableSSLVerification()
                         .build();
 
