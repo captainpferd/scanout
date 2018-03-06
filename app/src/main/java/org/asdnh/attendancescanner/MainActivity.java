@@ -18,7 +18,10 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.view.View;
+import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.google.android.gms.vision.CameraSource;
 import com.google.android.gms.vision.Detector;
@@ -73,6 +76,16 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+
+        //Create a progress bar to show realm loading progress
+        ProgressBar realmProgress = findViewById(R.id.realmLoadingBar);
+
+       // realmProgress.setIndeterminate(true);
+
+        //realmProgress.getIndeterminateDrawable().setColorFilter(Color.BLACK, PorterDuff.Mode.SRC_ATOP);
+
+        Log.i("realm", "Showing progress bar");
+        realmProgress.setVisibility(View.VISIBLE);
 
         //Get shared preferences
         SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
@@ -199,6 +212,10 @@ public class MainActivity extends AppCompatActivity {
                 startQRCodeScanner();
 
             }
+
+            Log.i("realm", "Hiding progress bar");
+            realmProgress.setVisibility(View.GONE);
+
         }
 
     }
@@ -266,7 +283,7 @@ public class MainActivity extends AppCompatActivity {
     //Display camera and scan for QR codes in method
     public void startQRCodeScanner() {
 
-        Log.i("realm", "Start QR scanner running");
+        Log.i("realm", "Start QR scanner");
 
         //Barcode Detector to receive images from the camera and check for QR codes
         barcodeDetector = new BarcodeDetector.Builder(this)
@@ -357,57 +374,67 @@ public class MainActivity extends AppCompatActivity {
 
                             final String studentName = b.displayValue;
 
+                            //Check for a fake name
+                            if (!studentName.contains("Student")) {
+
+                                Toast toast = Toast.makeText(getApplicationContext(), "Nice try", Toast.LENGTH_LONG);
+                                toast.show();
+                                recreate();
+
+                            } else {
+
                             /* Construct the realm query
                              * Find entries in the database where the student name matches the QR code
                              * and timeIn is null (no sign in time)
                              * If none are found, object returned is null
                              * Otherwise, a live reference to that entry in the database is passed
                              */
-                            Log.i("realm", "Checking to see if the student is already signed out");
-                            RealmQuery<Student> query = database.where(Student.class);
+                                Log.i("realm", "Checking to see if the student is already signed out");
+                                RealmQuery<Student> query = database.where(Student.class);
 
-                            query.equalTo("name", studentName);
+                                query.equalTo("name", studentName);
 
-                            query.isNull("timeIn");
+                                query.isNull("timeIn");
 
-                            //Execute the query
-                            Student tempStudent = query.findFirst();
+                                //Execute the query
+                                Student tempStudent = query.findFirst();
 
-                            //If the query returns null, create a new student object to sign out
-                            if(tempStudent == null) {
+                                //If the query returns null, create a new student object to sign out
+                                if (tempStudent == null) {
 
-                                //Start destination activity to get destination as result
-                                Intent getDestinationIntent = new Intent(getApplicationContext(), DestinationActivity.class);
+                                    //Start destination activity to get destination as result
+                                    Intent getDestinationIntent = new Intent(getApplicationContext(), DestinationActivity.class);
 
-                                //Add the student name to set the title of the destination activity
-                                getDestinationIntent.putExtra("name", studentName);
+                                    //Add the student name to set the title of the destination activity
+                                    getDestinationIntent.putExtra("name", studentName);
 
-                                //Start the destination activity and call onActivityResult when it finishes
-                                Log.i("realm", "Starting destination activity");
-                                startActivityForResult(getDestinationIntent, DESTINATION_REQUEST);
+                                    //Start the destination activity and call onActivityResult when it finishes
+                                    Log.i("realm", "Starting destination activity");
+                                    startActivityForResult(getDestinationIntent, DESTINATION_REQUEST);
 
 
-                            //If an object was found by the query, then this student needs to sign in
-                            } else {
+                                    //If an object was found by the query, then this student needs to sign in
+                                } else {
 
-                                //Start a transaction so changes to the object are reflected in the database
-                                Log.i("realm", "Temp student not null, assigning time in");
-                                database.beginTransaction();
+                                    //Start a transaction so changes to the object are reflected in the database
+                                    Log.i("realm", "Temp student not null, assigning time in");
+                                    database.beginTransaction();
 
-                                //Set the time in to the current time
-                                tempStudent.timeIn = new SimpleDateFormat("HH:mm:ss", Locale.US).format(new Date());
+                                    //Set the time in to the current time
+                                    tempStudent.timeIn = new SimpleDateFormat("HH:mm:ss", Locale.US).format(new Date());
 
-                                //Finish the transaction
-                                database.commitTransaction();
+                                    //Finish the transaction
+                                    database.commitTransaction();
 
-                                //Set a welcome back message so the student knows they have been signed in
-                                String welcome = ("Welcome back, " + studentName);
-                                qrCodeContents.setText(welcome);
+                                    //Set a welcome back message so the student knows they have been signed in
+                                    Toast toast = Toast.makeText(getApplicationContext(), "Welcome back, " + studentName, Toast.LENGTH_LONG);
+                                    toast.show();
 
-                                //The barcode detector was released to stop duplicate scans, so refresh the activity to rebuild it
-                                recreate();
+                                    //The barcode detector was released to stop duplicate scans, so refresh the activity to rebuild it
+                                    recreate();
+                                }
+
                             }
-
                         }
 
 
