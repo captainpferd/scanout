@@ -7,21 +7,23 @@ package org.asdnh.attendancescanner;
 
 public class RealmAddress {
 
+    //Store realm URL in its various forms
     private static  String INSTANCE_ADDRESS;
     private static String AUTH_URL;
     private static String REALM_BASE_URL;
 
-
-    public static String getInstanceAddress() {
-        return INSTANCE_ADDRESS;
-    }
-
-
+    // Set the instance address to the value passed in from shared preferences and set the auth and base URL appropriately from there
     public static void setInstanceAddress(String instanceAddress) {
 
         INSTANCE_ADDRESS = instanceAddress;
         setAuthUrl();
         setRealmBaseUrl();
+    }
+
+    //Various setters and getters.  The setters either prefix or suffix the address depending on what is needed
+
+    public static String getInstanceAddress() {
+        return INSTANCE_ADDRESS;
     }
 
 

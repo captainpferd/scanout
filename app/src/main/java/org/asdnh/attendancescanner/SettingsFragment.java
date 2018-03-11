@@ -1,3 +1,4 @@
+//Fragment that holds the settings in the settings activity
 package org.asdnh.attendancescanner;
 
 import android.content.SharedPreferences;
@@ -13,6 +14,7 @@ public class SettingsFragment extends PreferenceFragment implements SharedPrefer
 
         super.onCreate(savedInstanceState);
 
+        //Use XML file to get pre-defined preferences
         addPreferencesFromResource(R.xml.pref_realm);
 
     }
@@ -21,6 +23,7 @@ public class SettingsFragment extends PreferenceFragment implements SharedPrefer
     public void onResume() {
         super.onResume();
 
+        //Register preference change listener
         getPreferenceManager().getSharedPreferences().registerOnSharedPreferenceChangeListener(this);
     }
 
@@ -28,16 +31,18 @@ public class SettingsFragment extends PreferenceFragment implements SharedPrefer
     public void onPause() {
         super.onPause();
 
+        //Unregister the listener
         getPreferenceManager().getSharedPreferences().unregisterOnSharedPreferenceChangeListener(this);
     }
 
     @Override
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
 
-        //TODO: Edit this to also force a relog when the username or password is changed
+        //If any realm information is changed, log the current user out to force a re-log
         if(key.equals(SettingsActivity.KEY_PREF_REALM_URL) || key.equals(SettingsActivity.KEY_PREF_REALM_USERNAME)
                 || key.equals(SettingsActivity.KEY_PREF_REALM_PASSWORD)) {
 
+            //Log the user out if they are still valid
             Log.i("realm", "Logging user out");
             if(MainActivity.user != null) {
 
@@ -45,14 +50,18 @@ public class SettingsFragment extends PreferenceFragment implements SharedPrefer
 
             }
 
+            //If the URL was changed, then set the instance address to the new URL
             if(key.equals(SettingsActivity.KEY_PREF_REALM_URL)) {
 
                 Log.i("realm", "resetting instance address");
 
+                //Set the new URL
                 RealmAddress.setInstanceAddress(sharedPreferences.getString(SettingsActivity.KEY_PREF_REALM_URL, ""));
             }
 
         }
+
     }
+
 
 }
