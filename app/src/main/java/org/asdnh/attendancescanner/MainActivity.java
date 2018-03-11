@@ -58,8 +58,9 @@ public class MainActivity extends AppCompatActivity {
 
     //Realm resources
     private Realm database;
-    private SyncUser user;
+    protected static SyncUser user;
     boolean loginGood;
+    protected SharedPreferences sharedPref;
 
     //Permissions request
     private final int MY_PERMISSIONS_REQUEST_CAMERA = 1;
@@ -87,8 +88,11 @@ public class MainActivity extends AppCompatActivity {
         Log.i("realm", "Showing progress bar");
         realmProgress.setVisibility(View.VISIBLE);
 
+        //Set defaults
+        PreferenceManager.setDefaultValues(this, R.xml.pref_realm, false);
+
         //Get shared preferences
-        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+        sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
 
         //Assign the surface view to camera stream
         cameraStream = findViewById(R.id.surfaceView);
@@ -115,6 +119,12 @@ public class MainActivity extends AppCompatActivity {
             Log.i("realm", "Calling realm.init");
             Realm.init(this);
 
+            //Set realm URL
+            RealmAddress.setInstanceAddress(sharedPref.getString(SettingsActivity.KEY_PREF_REALM_URL, ""));
+
+            Log.i("realm", "Realm instance address is: " + RealmAddress.getInstanceAddress());
+
+
             Log.i("realm", "Starting to configure realm");
 
             //Check for a valid user
@@ -125,8 +135,12 @@ public class MainActivity extends AppCompatActivity {
 
                 Log.i("realm", "User is not valid");
 
+                Log.i("realm", "username: " + sharedPref.getString(SettingsActivity.KEY_PREF_REALM_USERNAME, "") + ", password: " + sharedPref.getString(SettingsActivity.KEY_PREF_REALM_PASSWORD, ""));
+
                 //Create credentials to log in
-                final SyncCredentials myCredentials = SyncCredentials.usernamePassword("jr_sr_client", "asdrocks", false);
+                final SyncCredentials myCredentials = SyncCredentials.usernamePassword(sharedPref.getString(SettingsActivity.KEY_PREF_REALM_USERNAME, "jr_sr_client"),
+                        sharedPref.getString(SettingsActivity.KEY_PREF_REALM_PASSWORD, "asdrocks"),
+                        false);
 
                 //Log in in a new thread so the program can be paused during its execution
                 Thread t = new Thread(new Runnable() {
@@ -139,6 +153,7 @@ public class MainActivity extends AppCompatActivity {
 
                         //Attempt to log in, catch an exception of there is no internet
                         try {
+
 
                             user = SyncUser.login(myCredentials, getAuthUrl());
 

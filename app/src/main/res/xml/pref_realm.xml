@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <EditTextPreference
+        android:key="pref_realm_url"
+        android:title="@string/pref_realm_url_summary"
+        android:summary="@string/pref_realm_url_prompt"
+        android:defaultValue="@string/default_realm"
+        />
+
+    <EditTextPreference
+        android:key="pref_realm_username"
+        android:title="@string/pref_realm_username_summary"
+        android:summary="@string/pref_realm_username_prompt"
+        android:defaultValue="@string/default_username"
+        />
+
+    <EditTextPreference
+        android:key="pref_realm_password"
+        android:title="@string/pref_realm_password_summary"
+        android:summary="@string/pref_realm_username_prompt"
+        android:defaultValue="@string/default_password"
+        />
+
+
+
+
+</PreferenceScreen>
