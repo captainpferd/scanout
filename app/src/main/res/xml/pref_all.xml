@@ -22,6 +22,13 @@
         android:defaultValue="@string/default_password"
         />
 
+    <SwitchPreference
+        android:key="pref_camera_direction"
+        android:title="@string/pref_camera_direction_title"
+        android:summaryOff="@string/pref_camera_off"
+        android:summaryOn="@string/pref_camera_on"
+        android:defaultValue="false"
+        />
 
 
 

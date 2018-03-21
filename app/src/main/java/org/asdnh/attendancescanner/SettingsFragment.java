@@ -15,7 +15,7 @@ public class SettingsFragment extends PreferenceFragment implements SharedPrefer
         super.onCreate(savedInstanceState);
 
         //Use XML file to get pre-defined preferences
-        addPreferencesFromResource(R.xml.pref_realm);
+        addPreferencesFromResource(R.xml.pref_all);
 
     }
 

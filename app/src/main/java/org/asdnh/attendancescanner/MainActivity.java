@@ -78,6 +78,8 @@ public class MainActivity extends AppCompatActivity {
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
+        //Get view flipper
+
         //Create a progress bar to show realm loading progress
         ProgressBar realmProgress = findViewById(R.id.realmLoadingBar);
 
@@ -89,7 +91,7 @@ public class MainActivity extends AppCompatActivity {
         realmProgress.setVisibility(View.VISIBLE);
 
         //Set defaults
-        PreferenceManager.setDefaultValues(this, R.xml.pref_realm, false);
+        PreferenceManager.setDefaultValues(this, R.xml.pref_all, false);
 
         //Get shared preferences
         sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
@@ -231,6 +233,8 @@ public class MainActivity extends AppCompatActivity {
             Log.i("realm", "Hiding progress bar");
             realmProgress.setVisibility(View.GONE);
 
+            Log.i("realm", "Realm Path: " + database.getPath());
+
         }
 
     }
@@ -306,9 +310,20 @@ public class MainActivity extends AppCompatActivity {
                 .setBarcodeFormats(Barcode.QR_CODE)
                 .build();
 
+        //Store variable representing camera direction
+        int cameraDirection = CameraSource.CAMERA_FACING_BACK;
+
+        //Get camera direction from shared preferences, default to back
+        if(sharedPref.getBoolean(SettingsActivity.KEY_PREF_CAMERA_DIRECTION, false)) {
+
+            cameraDirection = CameraSource.CAMERA_FACING_FRONT;
+            
+        }
+
         //Camera object to show a preview in the app as well as for use by the barcode detector
         cameraPreview = new CameraSource.Builder(this, barcodeDetector)
                 .setAutoFocusEnabled(true)
+                .setFacing(cameraDirection)
                 .build();
 
         //Attempt to begin streaming the camera preview to the SurfaceView
