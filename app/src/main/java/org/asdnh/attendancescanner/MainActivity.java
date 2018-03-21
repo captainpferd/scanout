@@ -27,6 +27,11 @@ import com.google.android.gms.vision.CameraSource;
 import com.google.android.gms.vision.Detector;
 import com.google.android.gms.vision.barcode.Barcode;
 import com.google.android.gms.vision.barcode.BarcodeDetector;
+import com.jakewharton.threetenabp.AndroidThreeTen;
+
+import org.threeten.bp.Duration;
+import org.threeten.bp.LocalDateTime;
+import org.threeten.bp.format.DateTimeFormatter;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -78,7 +83,8 @@ public class MainActivity extends AppCompatActivity {
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        //Get view flipper
+        //Initialize date/time library
+        AndroidThreeTen.init(this);
 
         //Create a progress bar to show realm loading progress
         ProgressBar realmProgress = findViewById(R.id.realmLoadingBar);
@@ -447,22 +453,56 @@ public class MainActivity extends AppCompatActivity {
                                     //If an object was found by the query, then this student needs to sign in
                                 } else {
 
+                                    //Get time difference between sign out and present
+                                    long timeDifference = compareTimes(tempStudent.date, tempStudent.timeOut);
+                                    Log.i("realm", "Difference in time: " + timeDifference);
+
                                     //Start a transaction so changes to the object are reflected in the database
-                                    Log.i("realm", "Temp student not null, assigning time in");
+                                    Log.i("realm", "Temp student not null, checking time difference");
                                     database.beginTransaction();
 
-                                    //Set the time in to the current time
-                                    tempStudent.timeIn = new SimpleDateFormat("HH:mm:ss", Locale.US).format(new Date());
+                                    //Check to see if this sign in is close enough to the departure they probably misclicked
+                                    if(timeDifference <= 20) {
 
-                                    //Finish the transaction
-                                    database.commitTransaction();
+                                        Log.i("realm", "Time difference is < 20 seconds, assuming an accident");
+                                        //Remove the student object from realm
+                                        tempStudent.deleteFromRealm();
 
-                                    //Set a welcome back message so the student knows they have been signed in
-                                    Toast toast = Toast.makeText(getApplicationContext(), "Welcome back, " + studentName, Toast.LENGTH_LONG);
-                                    toast.show();
+                                        Toast toast = Toast.makeText(getApplicationContext(), "Looks like you mis-clicked? Removing that entry from the log.", Toast.LENGTH_SHORT);
+                                        toast.show();
+
+                                        database.commitTransaction();
+
+                                    } else {
+
+                                        Log.i("realm", "Time difference is > 20 seconds, assigning timeIn");
+
+                                        //Check if the person was gone for over 2 hours
+                                        if (timeDifference > 7200) {
+
+                                            //Calculate time gone in hours, rounded down
+                                            int hoursGone = (int) timeDifference / 3600;
+
+                                            //Show a message informing them that they may have forgotten to sign in
+                                            Toast toast = Toast.makeText(getApplicationContext(), "Looks like you forgot to sign in earlier? You were gone for around " + hoursGone + " hours", Toast.LENGTH_LONG);
+                                            toast.show();
+                                        }
+
+                                        //Set the time in to the current time
+                                        tempStudent.timeIn = new SimpleDateFormat("HH:mm:ss", Locale.US).format(new Date());
+
+                                        //Finish the transaction
+                                        database.commitTransaction();
+
+                                        //Set a welcome back message so the student knows they have been signed in
+                                        Toast toast = Toast.makeText(getApplicationContext(), "Welcome back, " + studentName, Toast.LENGTH_LONG);
+                                        toast.show();
+
+                                    }
 
                                     //The barcode detector was released to stop duplicate scans, so refresh the activity to rebuild it
                                     recreate();
+
                                 }
 
                             }
@@ -560,6 +600,23 @@ public class MainActivity extends AppCompatActivity {
         startQRCodeScanner();
 
         Log.i("realm", "Leaving onActivityResult");
+
+    }
+
+
+    //Method to compare a date and time passed to the current date and time
+    public static long compareTimes(String date1, String time1) {
+
+        //Format the dates and times will be in
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM/dd/yyyy HH:mm:ss");
+
+        //Store dates and times in an object that can be compared
+        LocalDateTime dateTime1 = LocalDateTime.parse(date1 + " " + time1, formatter);
+
+        LocalDateTime now = LocalDateTime.now();
+
+        //Return the difference in seconds between the two times
+        return (Duration.between(dateTime1, now).toMillis() / 1000);
 
     }
 
