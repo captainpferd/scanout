@@ -3,8 +3,10 @@ package org.asdnh.attendancescanner;
 
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.preference.Preference;
 import android.preference.PreferenceFragment;
 import android.util.Log;
+import android.widget.Toast;
 
 
 public class SettingsFragment extends PreferenceFragment implements SharedPreferences.OnSharedPreferenceChangeListener {
@@ -16,6 +18,38 @@ public class SettingsFragment extends PreferenceFragment implements SharedPrefer
 
         //Use XML file to get pre-defined preferences
         addPreferencesFromResource(R.xml.pref_all);
+
+        //Get preference button listener
+        Preference button = findPreference(SettingsActivity.KEY_PREF_CSV);
+
+        button.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
+
+            @Override
+            public boolean onPreferenceClick(Preference preference) {
+
+                //Export the data in the realm database to a csv when pressed
+
+                /*boolean successful = MainActivity.exportToCSV();
+
+                if(successful) {
+                    Toast toast = Toast.makeText(getActivity(), "CSV Export Successful", Toast.LENGTH_SHORT);
+                    toast.show();
+                    return true;
+
+                } else {
+                    Toast toast = Toast.makeText(getActivity(), "CSV Export Failed", Toast.LENGTH_SHORT);
+                    toast.show();
+                    return false;
+
+                }*/
+
+                Toast toast = Toast.makeText(getActivity(), "Work in Progress", Toast.LENGTH_SHORT);
+                toast.show();
+                return true;
+
+            }
+
+        });
 
     }
 

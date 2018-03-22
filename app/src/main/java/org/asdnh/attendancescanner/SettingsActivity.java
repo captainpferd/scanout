@@ -14,6 +14,7 @@ public class SettingsActivity extends AppCompatActivity {
     public static final String KEY_PREF_REALM_PASSWORD = "pref_realm_password";
     public static final String KEY_PREF_CAMERA_DIRECTION = "pref_camera_direction";
     public static final String KEY_PREF_BUTTONS = "pref_button_grid";
+    public static final String KEY_PREF_CSV = "pref_csv_export";
 
 
     @Override

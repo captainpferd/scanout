@@ -30,6 +30,12 @@
         android:defaultValue="false"
         />
 
+    <Preference
+        android:title="@string/csv_title"
+        android:summary="@string/csv_summary"
+        android:key="pref_csv_export"
+        />
+
 
 
 </PreferenceScreen>

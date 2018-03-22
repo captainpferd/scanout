@@ -7,6 +7,7 @@ import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.design.widget.CoordinatorLayout;
+import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -28,14 +29,19 @@ import com.google.android.gms.vision.Detector;
 import com.google.android.gms.vision.barcode.Barcode;
 import com.google.android.gms.vision.barcode.BarcodeDetector;
 import com.jakewharton.threetenabp.AndroidThreeTen;
+import com.opencsv.CSVWriter;
 
 import org.threeten.bp.Duration;
 import org.threeten.bp.LocalDateTime;
 import org.threeten.bp.format.DateTimeFormatter;
 
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 
 import javax.annotation.Nonnull;
@@ -43,6 +49,7 @@ import javax.annotation.Nonnull;
 import io.realm.ObjectServerError;
 import io.realm.Realm;
 import io.realm.RealmQuery;
+import io.realm.RealmResults;
 import io.realm.SyncConfiguration;
 import io.realm.SyncCredentials;
 import io.realm.SyncUser;
@@ -62,13 +69,14 @@ public class MainActivity extends AppCompatActivity {
     private CoordinatorLayout coordinatorLayout;
 
     //Realm resources
-    private Realm database;
+    protected Realm database;
     protected static SyncUser user;
     boolean loginGood;
     protected SharedPreferences sharedPref;
 
     //Permissions request
     private final int MY_PERMISSIONS_REQUEST_CAMERA = 1;
+    private final int MY_PERMISSIONS_REQUEST_WRITE = 2;
 
     //Request code for destination activity
     private final int DESTINATION_REQUEST = 1;
@@ -88,10 +96,6 @@ public class MainActivity extends AppCompatActivity {
 
         //Create a progress bar to show realm loading progress
         ProgressBar realmProgress = findViewById(R.id.realmLoadingBar);
-
-       // realmProgress.setIndeterminate(true);
-
-        //realmProgress.getIndeterminateDrawable().setColorFilter(Color.BLACK, PorterDuff.Mode.SRC_ATOP);
 
         Log.i("realm", "Showing progress bar");
         realmProgress.setVisibility(View.VISIBLE);
@@ -161,7 +165,6 @@ public class MainActivity extends AppCompatActivity {
 
                         //Attempt to log in, catch an exception of there is no internet
                         try {
-
 
                             user = SyncUser.login(myCredentials, getAuthUrl());
 
@@ -243,6 +246,41 @@ public class MainActivity extends AppCompatActivity {
 
         }
 
+        //Get floating button
+        FloatingActionButton button = findViewById(R.id.floatingActionButton);
+
+        button.setOnClickListener(new View.OnClickListener() {
+
+            @Override
+            public void onClick(View view) {
+
+                //Request/check for permission to use the camera
+                if (ContextCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                        != PackageManager.PERMISSION_GRANTED) {
+
+                    //Request permission if not already granted
+                    ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                            MY_PERMISSIONS_REQUEST_WRITE);
+
+                } else {
+
+                    boolean success = exportToCSV();
+
+                    if (success) {
+
+                        Toast toast = Toast.makeText(getApplicationContext(), "Export Successful", Toast.LENGTH_SHORT);
+                        toast.show();
+
+                    } else {
+
+                        Toast toast = Toast.makeText(getApplicationContext(), "Export Failed", Toast.LENGTH_SHORT);
+                        toast.show();
+                    }
+                }
+            }
+
+        });
+
     }
 
 
@@ -271,8 +309,24 @@ public class MainActivity extends AppCompatActivity {
                 }
 
             }
+
+            case MY_PERMISSIONS_REQUEST_WRITE: {
+
+                if(grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+
+                    Toast toast = Toast.makeText(this, "Write permission granted. Export will now work", Toast.LENGTH_SHORT);
+                    toast.show();
+
+                } else {
+
+                    Toast toast = Toast.makeText(this, "Write permission required to export CSV file", Toast.LENGTH_LONG);
+                    toast.show();
+                }
+            }
         }
     }
+
 
     //Automatically generated
     @Override
@@ -283,6 +337,7 @@ public class MainActivity extends AppCompatActivity {
         return true;
 
     }
+
 
     //Automatically generated
     @Override
@@ -488,9 +543,16 @@ public class MainActivity extends AppCompatActivity {
                                             toast.show();
                                         }
 
-                                        //Set the time in to the current time
-                                        tempStudent.timeIn = new SimpleDateFormat("HH:mm:ss", Locale.US).format(new Date());
+                                        if(timeDifference > 43200) {
 
+                                            tempStudent.timeIn = R.string.missed_sign_in + ": " + new SimpleDateFormat("MM/dd/yyyy HH:mm:ss", Locale.US).format(new Date());
+
+                                        } else {
+
+                                            //Set the time in to the current time
+                                            tempStudent.timeIn = new SimpleDateFormat("HH:mm:ss", Locale.US).format(new Date());
+
+                                        }
                                         //Finish the transaction
                                         database.commitTransaction();
 
@@ -618,6 +680,89 @@ public class MainActivity extends AppCompatActivity {
         //Return the difference in seconds between the two times
         return (Duration.between(dateTime1, now).toMillis() / 1000);
 
+    }
+
+
+    //Method to export the realm database contents to a CSV file
+    public boolean exportToCSV() {
+
+        String baseDirectory = android.os.Environment.getExternalStorageDirectory().getAbsolutePath();
+
+        LocalDateTime timestamp = LocalDateTime.now();
+
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm:ss MM-dd-yyyy");
+
+        String fileName = "Realm_CSV_Export - " + timestamp.format(formatter) + ".csv";
+
+        String filePath = baseDirectory + File.separator + "Realm CSV Exports" + File.separator + fileName;
+
+        File file = new File(filePath);
+
+        file.getParentFile().mkdirs();
+
+        CSVWriter writer = null;
+
+        if(file.exists() && !file.isDirectory()) {
+
+            try {
+                FileWriter fileWriter = new FileWriter(filePath, true);
+                writer = new CSVWriter(fileWriter);
+
+            } catch (IOException e) {
+
+                e.printStackTrace();
+            }
+
+        } else {
+
+            try {
+                writer = new CSVWriter(new FileWriter(filePath));
+
+            } catch (IOException e) {
+
+                e.printStackTrace();
+            }
+
+        }
+
+        //Query to get list of strings
+
+        RealmResults<Student> students = database.where(Student.class)
+                                            .findAll();
+
+        //Write the list of strings
+        List<String[]> studentStrings = new ArrayList<>();
+
+        //Add headers in spreadsheet
+        studentStrings.add(new String[]{"Date", "Name", "Time Out", "Destination", "Time In"});
+
+        for (Student s : students) {
+
+            String timeIn = s.timeIn;
+
+            if(timeIn == null) {
+                timeIn = "N/A";
+            }
+
+            String[] temp = {s.date, s.name, s.timeOut, s.destination, timeIn};
+            studentStrings.add(temp);
+        }
+
+        try {
+            writer.writeAll(studentStrings);
+
+        } catch (NullPointerException e) {
+
+            e.printStackTrace();
+        }
+
+        try {
+            writer.close();
+        } catch (IOException | NullPointerException e) {
+            e.printStackTrace();
+        }
+
+        return true;
     }
 
 

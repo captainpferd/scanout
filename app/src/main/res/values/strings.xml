@@ -48,4 +48,11 @@
     <!-- Internet Warning -->
     <string name="internet_warning">Check your internet connection or Realm address and credentials</string>
 
+    <!-- CSV Export -->
+    <string name="csv_title">Export to CSV</string>
+    <string name="csv_summary">Press to export the realm database to a csv file in documents.</string>
+
+    <!-- Time gone warning -->
+    <string name="missed_sign_in">N/A, exceeded 12 hours</string>
+
 </resources>
