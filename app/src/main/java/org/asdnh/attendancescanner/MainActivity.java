@@ -7,7 +7,6 @@ import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.design.widget.CoordinatorLayout;
-import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -29,19 +28,14 @@ import com.google.android.gms.vision.Detector;
 import com.google.android.gms.vision.barcode.Barcode;
 import com.google.android.gms.vision.barcode.BarcodeDetector;
 import com.jakewharton.threetenabp.AndroidThreeTen;
-import com.opencsv.CSVWriter;
 
 import org.threeten.bp.Duration;
 import org.threeten.bp.LocalDateTime;
 import org.threeten.bp.format.DateTimeFormatter;
 
-import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
 import java.util.Locale;
 
 import javax.annotation.Nonnull;
@@ -49,7 +43,6 @@ import javax.annotation.Nonnull;
 import io.realm.ObjectServerError;
 import io.realm.Realm;
 import io.realm.RealmQuery;
-import io.realm.RealmResults;
 import io.realm.SyncConfiguration;
 import io.realm.SyncCredentials;
 import io.realm.SyncUser;
@@ -76,7 +69,6 @@ public class MainActivity extends AppCompatActivity {
 
     //Permissions request
     private final int MY_PERMISSIONS_REQUEST_CAMERA = 1;
-    private final int MY_PERMISSIONS_REQUEST_WRITE = 2;
 
     //Request code for destination activity
     private final int DESTINATION_REQUEST = 1;
@@ -127,97 +119,8 @@ public class MainActivity extends AppCompatActivity {
             //Permission is granted, proceed with the program
         } else {
 
-            //Initialize Realm
-            Log.i("realm", "Calling realm.init");
-            Realm.init(this);
-
-            //Set realm URL
-            RealmAddress.setInstanceAddress(sharedPref.getString(SettingsActivity.KEY_PREF_REALM_URL, ""));
-
-            Log.i("realm", "Realm instance address is: " + RealmAddress.getInstanceAddress());
-
-
-            Log.i("realm", "Starting to configure realm");
-
-            //Check for a valid user
-            user = SyncUser.currentUser();
-
-            //If user is null (expired), log in again
-            if(user == null) {
-
-                Log.i("realm", "User is not valid");
-
-                Log.i("realm", "username: " + sharedPref.getString(SettingsActivity.KEY_PREF_REALM_USERNAME, "") + ", password: " + sharedPref.getString(SettingsActivity.KEY_PREF_REALM_PASSWORD, ""));
-
-                //Create credentials to log in
-                final SyncCredentials myCredentials = SyncCredentials.usernamePassword(sharedPref.getString(SettingsActivity.KEY_PREF_REALM_USERNAME, "jr_sr_client"),
-                        sharedPref.getString(SettingsActivity.KEY_PREF_REALM_PASSWORD, "asdrocks"),
-                        false);
-
-                //Log in in a new thread so the program can be paused during its execution
-                Thread t = new Thread(new Runnable() {
-
-                    @Override
-                    public void run() {
-
-                        //Log into realm only if the current user is expired
-                        Log.i("realm", "entered async thread - attempting to log in");
-
-                        //Attempt to log in, catch an exception of there is no internet
-                        try {
-
-                            user = SyncUser.login(myCredentials, getAuthUrl());
-
-                            //Assign the user created to the class variable
-                            Log.i("realm", "logged in");
-
-                            //Login is valid
-                            loginGood = true;
-
-                        //Occurs when the user's credentials have expired and internet is not available
-                        } catch (ObjectServerError error) {
-
-                            //Print an error message to the log and quit the application of the realm cannot be retrieved
-                            error.printStackTrace();
-
-                           Log.i("realm", "Failed to log in to realm");
-
-                            //Show a message explaining the issue
-                            Snackbar snackbar = Snackbar.make(coordinatorLayout, R.string.internet_warning, Snackbar.LENGTH_INDEFINITE);
-                            snackbar.show();
-
-                            //Set valid login to false
-                            loginGood = false;
-
-                        }
-
-                    }
-
-
-                });
-
-                //Run thread and wait for results
-                t.start();
-
-                //Try to wait for results, catch an exception if thread is interrupted
-                try {
-
-                    t.join();
-
-                } catch (InterruptedException e) {
-
-                    //Login was unsuccessful
-                    loginGood = false;
-                    e.printStackTrace();
-
-                }
-
-            } else {
-
-                //Login is good
-                loginGood = true;
-
-            }
+            //Log into realm and get the instance, setting loginGood variable appropriately
+            loginRealm();
 
             //Continue with app only if login is good
             if(loginGood) {
@@ -233,6 +136,7 @@ public class MainActivity extends AppCompatActivity {
                 database = Realm.getInstance(config);
                 Log.i("realm", "realm retrieved");
 
+                Log.i("realm", "Realm Path: " + database.getPath());
 
                 //Start scanning QR codes
                 startQRCodeScanner();
@@ -242,44 +146,104 @@ public class MainActivity extends AppCompatActivity {
             Log.i("realm", "Hiding progress bar");
             realmProgress.setVisibility(View.GONE);
 
-            Log.i("realm", "Realm Path: " + database.getPath());
-
         }
 
-        //Get floating button
-        FloatingActionButton button = findViewById(R.id.floatingActionButton);
 
-        button.setOnClickListener(new View.OnClickListener() {
+    }
 
-            @Override
-            public void onClick(View view) {
+    public void loginRealm() {
 
-                //Request/check for permission to use the camera
-                if (ContextCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                        != PackageManager.PERMISSION_GRANTED) {
+        //Initialize Realm
+        Log.i("realm", "Calling realm.init");
+        Realm.init(this);
 
-                    //Request permission if not already granted
-                    ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
-                            MY_PERMISSIONS_REQUEST_WRITE);
+        //Set realm URL
+        RealmAddress.setInstanceAddress(sharedPref.getString(SettingsActivity.KEY_PREF_REALM_URL, ""));
 
-                } else {
+        Log.i("realm", "Realm instance address is: " + RealmAddress.getInstanceAddress());
 
-                    boolean success = exportToCSV();
 
-                    if (success) {
+        Log.i("realm", "Starting to configure realm");
 
-                        Toast toast = Toast.makeText(getApplicationContext(), "Export Successful", Toast.LENGTH_SHORT);
-                        toast.show();
+        //Check for a valid user
+        user = SyncUser.currentUser();
 
-                    } else {
+        //If user is null (expired), log in again
+        if(user == null) {
 
-                        Toast toast = Toast.makeText(getApplicationContext(), "Export Failed", Toast.LENGTH_SHORT);
-                        toast.show();
+            Log.i("realm", "User is not valid");
+
+            Log.i("realm", "username: " + sharedPref.getString(SettingsActivity.KEY_PREF_REALM_USERNAME, "") + ", password: " + sharedPref.getString(SettingsActivity.KEY_PREF_REALM_PASSWORD, ""));
+
+            //Create credentials to log in
+            final SyncCredentials myCredentials = SyncCredentials.usernamePassword(sharedPref.getString(SettingsActivity.KEY_PREF_REALM_USERNAME, "jr_sr_client"),
+                    sharedPref.getString(SettingsActivity.KEY_PREF_REALM_PASSWORD, "asdrocks"),
+                    false);
+
+            //Log in in a new thread so the program can be paused during its execution
+            Thread t = new Thread(new Runnable() {
+
+                @Override
+                public void run() {
+
+                    //Log into realm only if the current user is expired
+                    Log.i("realm", "entered async thread - attempting to log in");
+
+                    //Attempt to log in, catch an exception of there is no internet
+                    try {
+
+                        user = SyncUser.login(myCredentials, getAuthUrl());
+
+                        //Assign the user created to the class variable
+                        Log.i("realm", "logged in");
+
+                        //Login is valid
+                        loginGood = true;
+
+                        //Occurs when the user's credentials have expired and internet is not available
+                    } catch (ObjectServerError error) {
+
+                        //Print an error message to the log and quit the application of the realm cannot be retrieved
+                        error.printStackTrace();
+
+                        Log.i("realm", "Failed to log in to realm");
+
+                        //Show a message explaining the issue
+                        Snackbar snackbar = Snackbar.make(coordinatorLayout, R.string.internet_warning, Snackbar.LENGTH_INDEFINITE);
+                        snackbar.show();
+
+                        //Set valid login to false
+                        loginGood = false;
+
                     }
+
                 }
+
+
+            });
+
+            //Run thread and wait for results
+            t.start();
+
+            //Try to wait for results, catch an exception if thread is interrupted
+            try {
+
+                t.join();
+
+            } catch (InterruptedException e) {
+
+                //Login was unsuccessful
+                loginGood = false;
+                e.printStackTrace();
+
             }
 
-        });
+        } else {
+
+            //Login is good
+            loginGood = true;
+
+        }
 
     }
 
@@ -308,21 +272,6 @@ public class MainActivity extends AppCompatActivity {
                     qrCodeContents.setText(getString(R.string.camera_denied));
                 }
 
-            }
-
-            case MY_PERMISSIONS_REQUEST_WRITE: {
-
-                if(grantResults.length > 0
-                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-
-                    Toast toast = Toast.makeText(this, "Write permission granted. Export will now work", Toast.LENGTH_SHORT);
-                    toast.show();
-
-                } else {
-
-                    Toast toast = Toast.makeText(this, "Write permission required to export CSV file", Toast.LENGTH_LONG);
-                    toast.show();
-                }
             }
         }
     }
@@ -475,97 +424,7 @@ public class MainActivity extends AppCompatActivity {
 
                             } else {
 
-                            /* Construct the realm query
-                             * Find entries in the database where the student name matches the QR code
-                             * and timeIn is null (no sign in time)
-                             * If none are found, object returned is null
-                             * Otherwise, a live reference to that entry in the database is passed
-                             */
-                                Log.i("realm", "Checking to see if the student is already signed out");
-                                RealmQuery<Student> query = database.where(Student.class);
-
-                                query.equalTo("name", studentName);
-
-                                query.isNull("timeIn");
-
-                                //Execute the query
-                                Student tempStudent = query.findFirst();
-
-                                //If the query returns null, create a new student object to sign out
-                                if (tempStudent == null) {
-
-                                    //Start destination activity to get destination as result
-                                    Intent getDestinationIntent = new Intent(getApplicationContext(), DestinationActivity.class);
-
-                                    //Add the student name to set the title of the destination activity
-                                    getDestinationIntent.putExtra("name", studentName);
-
-                                    //Start the destination activity and call onActivityResult when it finishes
-                                    Log.i("realm", "Starting destination activity");
-                                    startActivityForResult(getDestinationIntent, DESTINATION_REQUEST);
-
-
-                                    //If an object was found by the query, then this student needs to sign in
-                                } else {
-
-                                    //Get time difference between sign out and present
-                                    long timeDifference = compareTimes(tempStudent.date, tempStudent.timeOut);
-                                    Log.i("realm", "Difference in time: " + timeDifference);
-
-                                    //Start a transaction so changes to the object are reflected in the database
-                                    Log.i("realm", "Temp student not null, checking time difference");
-                                    database.beginTransaction();
-
-                                    //Check to see if this sign in is close enough to the departure they probably misclicked
-                                    if(timeDifference <= 20) {
-
-                                        Log.i("realm", "Time difference is < 20 seconds, assuming an accident");
-                                        //Remove the student object from realm
-                                        tempStudent.deleteFromRealm();
-
-                                        Toast toast = Toast.makeText(getApplicationContext(), "Looks like you mis-clicked? Removing that entry from the log.", Toast.LENGTH_SHORT);
-                                        toast.show();
-
-                                        database.commitTransaction();
-
-                                    } else {
-
-                                        Log.i("realm", "Time difference is > 20 seconds, assigning timeIn");
-
-                                        //Check if the person was gone for over 2 hours
-                                        if (timeDifference > 7200) {
-
-                                            //Calculate time gone in hours, rounded down
-                                            int hoursGone = (int) timeDifference / 3600;
-
-                                            //Show a message informing them that they may have forgotten to sign in
-                                            Toast toast = Toast.makeText(getApplicationContext(), "Looks like you forgot to sign in earlier? You were gone for around " + hoursGone + " hours", Toast.LENGTH_LONG);
-                                            toast.show();
-                                        }
-
-                                        if(timeDifference > 43200) {
-
-                                            tempStudent.timeIn = R.string.missed_sign_in + ": " + new SimpleDateFormat("MM/dd/yyyy HH:mm:ss", Locale.US).format(new Date());
-
-                                        } else {
-
-                                            //Set the time in to the current time
-                                            tempStudent.timeIn = new SimpleDateFormat("HH:mm:ss", Locale.US).format(new Date());
-
-                                        }
-                                        //Finish the transaction
-                                        database.commitTransaction();
-
-                                        //Set a welcome back message so the student knows they have been signed in
-                                        Toast toast = Toast.makeText(getApplicationContext(), "Welcome back, " + studentName, Toast.LENGTH_LONG);
-                                        toast.show();
-
-                                    }
-
-                                    //The barcode detector was released to stop duplicate scans, so refresh the activity to rebuild it
-                                    recreate();
-
-                                }
+                                signInOut(studentName);
 
                             }
                         }
@@ -578,6 +437,105 @@ public class MainActivity extends AppCompatActivity {
 
 
         });
+
+    }
+
+
+    //Function to handle the sign in/sign out process
+    public void signInOut(String studentName) {
+
+        /* Construct the realm query
+         * Find entries in the database where the student name matches the QR code
+         * and timeIn is null (no sign in time)
+         * If none are found, object returned is null
+         * Otherwise, a live reference to that entry in the database is passed
+         */
+
+        Log.i("realm", "Checking to see if the student is already signed out");
+        RealmQuery<Student> query = database.where(Student.class);
+
+        query.equalTo("name", studentName);
+
+        query.isNull("timeIn");
+
+        //Execute the query
+        Student tempStudent = query.findFirst();
+
+        //If the query returns null, create a new student object to sign out
+        if (tempStudent == null) {
+
+            //Start destination activity to get destination as result
+            Intent getDestinationIntent = new Intent(getApplicationContext(), DestinationActivity.class);
+
+            //Add the student name to set the title of the destination activity
+            getDestinationIntent.putExtra("name", studentName);
+
+            //Start the destination activity and call onActivityResult when it finishes
+            Log.i("realm", "Starting destination activity");
+            startActivityForResult(getDestinationIntent, DESTINATION_REQUEST);
+
+
+            //If an object was found by the query, then this student needs to sign in
+        } else {
+
+            //Get time difference between sign out and present
+            long timeDifference = compareTimes(tempStudent.date, tempStudent.timeOut);
+            Log.i("realm", "Difference in time: " + timeDifference);
+
+            //Start a transaction so changes to the object are reflected in the database
+            Log.i("realm", "Temp student not null, checking time difference");
+            database.beginTransaction();
+
+            //Check to see if this sign in is close enough to the departure they probably misclicked
+            if (timeDifference <= 20) {
+
+                Log.i("realm", "Time difference is < 20 seconds, assuming an accident");
+                //Remove the student object from realm
+                tempStudent.deleteFromRealm();
+
+                Toast toast = Toast.makeText(getApplicationContext(), "Looks like you mis-clicked? Removing that entry from the log.", Toast.LENGTH_SHORT);
+                toast.show();
+
+                database.commitTransaction();
+
+            } else {
+
+                Log.i("realm", "Time difference is > 20 seconds, assigning timeIn");
+
+                //Check if the person was gone for over 2 hours
+                if (timeDifference > 7200) {
+
+                    //Calculate time gone in hours, rounded down
+                    int hoursGone = (int) timeDifference / 3600;
+
+                    //Show a message informing them that they may have forgotten to sign in
+                    Toast toast = Toast.makeText(getApplicationContext(), "Looks like you forgot to sign in earlier? You were gone for around " + hoursGone + " hours", Toast.LENGTH_LONG);
+                    toast.show();
+                }
+
+                if (timeDifference > 43200) {
+
+                    tempStudent.timeIn = getString(R.string.missed_sign_in) + ": " + new SimpleDateFormat("MM/dd/yyyy HH:mm:ss", Locale.US).format(new Date());
+
+                } else {
+
+                    //Set the time in to the current time
+                    tempStudent.timeIn = new SimpleDateFormat("HH:mm:ss", Locale.US).format(new Date());
+
+                }
+                //Finish the transaction
+                database.commitTransaction();
+
+                //Set a welcome back message so the student knows they have been signed in
+                Toast toast = Toast.makeText(getApplicationContext(), "Welcome back, " + studentName, Toast.LENGTH_LONG);
+                toast.show();
+
+            }
+
+            //The barcode detector was released to stop duplicate scans, so refresh the activity to rebuild it
+            recreate();
+
+        }
 
     }
 
@@ -680,89 +638,6 @@ public class MainActivity extends AppCompatActivity {
         //Return the difference in seconds between the two times
         return (Duration.between(dateTime1, now).toMillis() / 1000);
 
-    }
-
-
-    //Method to export the realm database contents to a CSV file
-    public boolean exportToCSV() {
-
-        String baseDirectory = android.os.Environment.getExternalStorageDirectory().getAbsolutePath();
-
-        LocalDateTime timestamp = LocalDateTime.now();
-
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm:ss MM-dd-yyyy");
-
-        String fileName = "Realm_CSV_Export - " + timestamp.format(formatter) + ".csv";
-
-        String filePath = baseDirectory + File.separator + "Realm CSV Exports" + File.separator + fileName;
-
-        File file = new File(filePath);
-
-        file.getParentFile().mkdirs();
-
-        CSVWriter writer = null;
-
-        if(file.exists() && !file.isDirectory()) {
-
-            try {
-                FileWriter fileWriter = new FileWriter(filePath, true);
-                writer = new CSVWriter(fileWriter);
-
-            } catch (IOException e) {
-
-                e.printStackTrace();
-            }
-
-        } else {
-
-            try {
-                writer = new CSVWriter(new FileWriter(filePath));
-
-            } catch (IOException e) {
-
-                e.printStackTrace();
-            }
-
-        }
-
-        //Query to get list of strings
-
-        RealmResults<Student> students = database.where(Student.class)
-                                            .findAll();
-
-        //Write the list of strings
-        List<String[]> studentStrings = new ArrayList<>();
-
-        //Add headers in spreadsheet
-        studentStrings.add(new String[]{"Date", "Name", "Time Out", "Destination", "Time In"});
-
-        for (Student s : students) {
-
-            String timeIn = s.timeIn;
-
-            if(timeIn == null) {
-                timeIn = "N/A";
-            }
-
-            String[] temp = {s.date, s.name, s.timeOut, s.destination, timeIn};
-            studentStrings.add(temp);
-        }
-
-        try {
-            writer.writeAll(studentStrings);
-
-        } catch (NullPointerException e) {
-
-            e.printStackTrace();
-        }
-
-        try {
-            writer.close();
-        } catch (IOException | NullPointerException e) {
-            e.printStackTrace();
-        }
-
-        return true;
     }
 
 
