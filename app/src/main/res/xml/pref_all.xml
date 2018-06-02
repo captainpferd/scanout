@@ -18,7 +18,7 @@
     <EditTextPreference
         android:key="pref_realm_password"
         android:title="@string/pref_realm_password_summary"
-        android:summary="@string/pref_realm_username_prompt"
+        android:summary="@string/pref_realm_password_prompt"
         android:defaultValue="@string/default_password"
         />
 

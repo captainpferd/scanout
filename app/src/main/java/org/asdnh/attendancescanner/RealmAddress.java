@@ -33,7 +33,7 @@ public class RealmAddress {
 
 
     public static void setAuthUrl() {
-        AUTH_URL = "https://" + INSTANCE_ADDRESS + "/auth";
+        AUTH_URL = "http://" + INSTANCE_ADDRESS + "/auth";
     }
 
 
@@ -43,7 +43,7 @@ public class RealmAddress {
 
 
     public static void setRealmBaseUrl() {
-        REALM_BASE_URL = "realms://" + INSTANCE_ADDRESS;
+        REALM_BASE_URL = "realm://" + INSTANCE_ADDRESS;
     }
 
 }

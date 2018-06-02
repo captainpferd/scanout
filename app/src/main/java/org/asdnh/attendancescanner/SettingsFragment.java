@@ -51,7 +51,6 @@ public class SettingsFragment extends PreferenceFragment implements SharedPrefer
     //Permissions request code for external storage writing
     private static final int MY_PERMISSIONS_REQUEST_EXPORT = 2;
 
-
     @Override
     public void onCreate(Bundle savedInstanceState) {
 
@@ -80,13 +79,17 @@ public class SettingsFragment extends PreferenceFragment implements SharedPrefer
                     ActivityCompat.requestPermissions(getActivity(), new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
                             MY_PERMISSIONS_REQUEST_EXPORT);
 
+                    //Return true when task ends
+                    return true;
+
+                } else {
+
+                    //Permission must be granted now, proceed with the program
+                    loginAndExport();
+
+                    //Return true when task ends
+                    return true;
                 }
-
-                //Permission must be granted now, proceed with the program
-                loginAndExport();
-
-                //Return true when task ends
-                return true;
 
             }
 
@@ -95,7 +98,7 @@ public class SettingsFragment extends PreferenceFragment implements SharedPrefer
     }
 
 
-    //Initialize and download realm instance
+    //Initialize and download realm instance (used only when exporting to CSV)
     public boolean loginRealm() {
 
         //Initialize Realm
@@ -132,7 +135,7 @@ public class SettingsFragment extends PreferenceFragment implements SharedPrefer
                 public void run() {
 
                     //Log into realm only if the current user is expired
-                    Log.i("realm", "entered async thread - attempting to log in");
+                    Log.i("realm", "entered async thread in settings fragment - attempting to log in");
 
                     //Attempt to log in, catch an exception of there is no internet
                     try {

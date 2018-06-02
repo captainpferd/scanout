@@ -31,6 +31,7 @@ public class SettingsActivity extends AppCompatActivity {
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
     }
 
+
     //Override on back pressed to force the main activity to be recreated when using device back button
     //This prevents the app from allowing one QR code scan with bad DB credentials
     @Override
@@ -45,6 +46,7 @@ public class SettingsActivity extends AppCompatActivity {
         //Finish the settings activity
         finish();
     }
+
 
     //Override the software back button to match the behavior of the hardware back button
     @Override

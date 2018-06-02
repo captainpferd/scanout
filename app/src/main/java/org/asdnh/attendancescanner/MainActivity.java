@@ -18,7 +18,6 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
-import android.view.View;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -73,6 +72,9 @@ public class MainActivity extends AppCompatActivity {
     //Request code for destination activity
     private final int DESTINATION_REQUEST = 1;
 
+    //Create a progress bar to show realm loading progress
+    protected ProgressBar realmProgress;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -86,11 +88,8 @@ public class MainActivity extends AppCompatActivity {
         //Initialize date/time library
         AndroidThreeTen.init(this);
 
-        //Create a progress bar to show realm loading progress
-        ProgressBar realmProgress = findViewById(R.id.realmLoadingBar);
-
-        Log.i("realm", "Showing progress bar");
-        realmProgress.setVisibility(View.VISIBLE);
+        //Initialize and show the loading bar
+        realmProgress = findViewById(R.id.realmLoadingBar);
 
         //Set defaults
         PreferenceManager.setDefaultValues(this, R.xml.pref_all, false);
@@ -143,14 +142,13 @@ public class MainActivity extends AppCompatActivity {
 
             }
 
-            Log.i("realm", "Hiding progress bar");
-            realmProgress.setVisibility(View.GONE);
-
         }
 
 
     }
 
+
+    //Method to log in to and download the realm database
     public void loginRealm() {
 
         //Initialize Realm
@@ -161,7 +159,6 @@ public class MainActivity extends AppCompatActivity {
         RealmAddress.setInstanceAddress(sharedPref.getString(SettingsActivity.KEY_PREF_REALM_URL, ""));
 
         Log.i("realm", "Realm instance address is: " + RealmAddress.getInstanceAddress());
-
 
         Log.i("realm", "Starting to configure realm");
 
@@ -187,10 +184,14 @@ public class MainActivity extends AppCompatActivity {
                 public void run() {
 
                     //Log into realm only if the current user is expired
-                    Log.i("realm", "entered async thread - attempting to log in");
+                    Log.i("realm", "entered async thread in main activity - attempting to log in");
 
                     //Attempt to log in, catch an exception of there is no internet
                     try {
+
+                        //Show progress bar
+                        Log.i("realm", "Showing progress bar");
+                        realmProgress.setVisibility(ProgressBar.VISIBLE);
 
                         user = SyncUser.login(myCredentials, getAuthUrl());
 
@@ -200,8 +201,12 @@ public class MainActivity extends AppCompatActivity {
                         //Login is valid
                         loginGood = true;
 
+                        Log.i("realm", "Hiding progress bar");
+                        realmProgress.setVisibility(ProgressBar.INVISIBLE);
+
                         //Occurs when the user's credentials have expired and internet is not available
-                    } catch (ObjectServerError error) {
+                        //Illegal argument happens when the URL is in a bad format
+                    } catch (ObjectServerError | IllegalArgumentException error) {
 
                         //Print an error message to the log and quit the application of the realm cannot be retrieved
                         error.printStackTrace();
@@ -228,7 +233,9 @@ public class MainActivity extends AppCompatActivity {
             //Try to wait for results, catch an exception if thread is interrupted
             try {
 
+                Log.i("realm", "Calling t.join");
                 t.join();
+                Log.i("realm", "Past t.join");
 
             } catch (InterruptedException e) {
 
@@ -248,9 +255,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-    /* Method to handle result of permissions request
-     *
-     */
+    //Method to handle result of permissions request
     @Override
     public void onRequestPermissionsResult(int requestCode, @Nonnull String permissions[], @Nonnull int[] grantResults) {
 
@@ -324,7 +329,7 @@ public class MainActivity extends AppCompatActivity {
         int cameraDirection = CameraSource.CAMERA_FACING_BACK;
 
         //Get camera direction from shared preferences, default to back
-        if(sharedPref.getBoolean(SettingsActivity.KEY_PREF_CAMERA_DIRECTION, false)) {
+        if(sharedPref.getBoolean(SettingsActivity.KEY_PREF_CAMERA_DIRECTION, true)) {
 
             cameraDirection = CameraSource.CAMERA_FACING_FRONT;
             
@@ -416,7 +421,10 @@ public class MainActivity extends AppCompatActivity {
                             final String studentName = b.displayValue;
 
                             //Check for a fake name
-                            if (!studentName.contains("Student")) {
+                            if (studentName.contains("Liam")) {
+                                Toast toast = Toast.makeText(getApplicationContext(), "Hi Liam", Toast.LENGTH_LONG);
+                                toast.show();
+                            }else if (!studentName.contains("Student")) {
 
                                 Toast toast = Toast.makeText(getApplicationContext(), "Nice try", Toast.LENGTH_LONG);
                                 toast.show();
