@@ -30,7 +30,7 @@
     <string name="perm_error">Permissions Error</string>
 
     <!-- Default realm server url -->
-    <string name="default_realm">attendance-scanner.us1a.cloud.realm.io</string>
+    <string name="default_realm">54.208.19.164:9080</string>
 
     <!-- Destination Activity -->
     <string name="title_activity_destination">No Name in QR code?</string>

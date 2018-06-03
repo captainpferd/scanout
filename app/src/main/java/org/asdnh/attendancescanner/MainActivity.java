@@ -118,11 +118,18 @@ public class MainActivity extends AppCompatActivity {
             //Permission is granted, proceed with the program
         } else {
 
+            //Show progress bar
+            Log.i("realm", "Showing progress bar");
+            realmProgress.setVisibility(ProgressBar.VISIBLE);
+
             //Log into realm and get the instance, setting loginGood variable appropriately
             loginRealm();
 
+            Log.i("realm", "Past login function, loginGood = " + loginGood);
+
+            //TODO: fix so loginGood will be updated if the login thread completes after this point in code
             //Continue with app only if login is good
-            if(loginGood) {
+            if (loginGood) {
 
                 Log.i("realm", "user is valid");
 
@@ -136,6 +143,9 @@ public class MainActivity extends AppCompatActivity {
                 Log.i("realm", "realm retrieved");
 
                 Log.i("realm", "Realm Path: " + database.getPath());
+
+                Log.i("realm", "Hiding progress bar");
+                realmProgress.setVisibility(ProgressBar.INVISIBLE);
 
                 //Start scanning QR codes
                 startQRCodeScanner();
@@ -166,7 +176,7 @@ public class MainActivity extends AppCompatActivity {
         user = SyncUser.currentUser();
 
         //If user is null (expired), log in again
-        if(user == null) {
+        if (user == null) {
 
             Log.i("realm", "User is not valid");
 
@@ -189,10 +199,6 @@ public class MainActivity extends AppCompatActivity {
                     //Attempt to log in, catch an exception of there is no internet
                     try {
 
-                        //Show progress bar
-                        Log.i("realm", "Showing progress bar");
-                        realmProgress.setVisibility(ProgressBar.VISIBLE);
-
                         user = SyncUser.login(myCredentials, getAuthUrl());
 
                         //Assign the user created to the class variable
@@ -200,9 +206,6 @@ public class MainActivity extends AppCompatActivity {
 
                         //Login is valid
                         loginGood = true;
-
-                        Log.i("realm", "Hiding progress bar");
-                        realmProgress.setVisibility(ProgressBar.INVISIBLE);
 
                         //Occurs when the user's credentials have expired and internet is not available
                         //Illegal argument happens when the URL is in a bad format
@@ -231,7 +234,7 @@ public class MainActivity extends AppCompatActivity {
             t.start();
 
             //Try to wait for results, catch an exception if thread is interrupted
-            try {
+            /*try {
 
                 Log.i("realm", "Calling t.join");
                 t.join();
@@ -243,7 +246,8 @@ public class MainActivity extends AppCompatActivity {
                 loginGood = false;
                 e.printStackTrace();
 
-            }
+            } */
+
 
         } else {
 
@@ -260,12 +264,12 @@ public class MainActivity extends AppCompatActivity {
     public void onRequestPermissionsResult(int requestCode, @Nonnull String permissions[], @Nonnull int[] grantResults) {
 
         //Switch statement to check for each permission requested
-        switch(requestCode) {
+        switch (requestCode) {
 
             //Camera request
             case MY_PERMISSIONS_REQUEST_CAMERA: {
                 //If request was cancelled, the array is empty
-                if(grantResults.length > 0
+                if (grantResults.length > 0
                         && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
 
                     //Permission granted, recreate activity
@@ -329,10 +333,10 @@ public class MainActivity extends AppCompatActivity {
         int cameraDirection = CameraSource.CAMERA_FACING_BACK;
 
         //Get camera direction from shared preferences, default to back
-        if(sharedPref.getBoolean(SettingsActivity.KEY_PREF_CAMERA_DIRECTION, true)) {
+        if (sharedPref.getBoolean(SettingsActivity.KEY_PREF_CAMERA_DIRECTION, true)) {
 
             cameraDirection = CameraSource.CAMERA_FACING_FRONT;
-            
+
         }
 
         //Camera object to show a preview in the app as well as for use by the barcode detector
@@ -424,7 +428,9 @@ public class MainActivity extends AppCompatActivity {
                             if (studentName.contains("Liam")) {
                                 Toast toast = Toast.makeText(getApplicationContext(), "Hi Liam", Toast.LENGTH_LONG);
                                 toast.show();
-                            }else if (!studentName.contains("Student")) {
+                                recreate();
+
+                            } else if (!studentName.contains("Student")) {
 
                                 Toast toast = Toast.makeText(getApplicationContext(), "Nice try", Toast.LENGTH_LONG);
                                 toast.show();
@@ -578,10 +584,10 @@ public class MainActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, getDestinationIntent);
 
         //If this method was called after the destination request, then sign the student out if there was no error
-        if(requestCode == DESTINATION_REQUEST) {
+        if (requestCode == DESTINATION_REQUEST) {
 
             //Check to make sure the destination activity worked
-            if(resultCode == RESULT_OK) {
+            if (resultCode == RESULT_OK) {
 
                 //Set destination and student name from the intent returned
                 final String destination = getDestinationIntent.getStringExtra("destination");
