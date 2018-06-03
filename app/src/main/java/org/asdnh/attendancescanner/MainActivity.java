@@ -127,7 +127,6 @@ public class MainActivity extends AppCompatActivity {
 
             Log.i("realm", "Past login function, loginGood = " + loginGood);
 
-            //TODO: fix so loginGood will be updated if the login thread completes after this point in code
             //Continue with app only if login is good
             if (loginGood) {
 
