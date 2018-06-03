@@ -207,7 +207,6 @@ public class MainActivity extends AppCompatActivity {
                         //Login is valid
                         loginGood = true;
 
-
                         //Recreate the main activity (must be run on the UI thread)
                         runOnUiThread(new Runnable() {
 

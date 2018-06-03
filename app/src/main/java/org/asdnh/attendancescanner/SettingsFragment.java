@@ -157,7 +157,7 @@ public class SettingsFragment extends PreferenceFragment implements SharedPrefer
                         Log.i("realm", "Failed to log in to realm");
 
                         //Show a message explaining the issue
-                        Snackbar snackbar = Snackbar.make(getActivity().findViewById(android.R.id.content), R.string.internet_warning, Snackbar.LENGTH_INDEFINITE);
+                        Snackbar snackbar = Snackbar.make(getActivity().findViewById(android.R.id.content), R.string.internet_warning, Snackbar.LENGTH_LONG);
                         snackbar.show();
 
                         //Set valid login to false
