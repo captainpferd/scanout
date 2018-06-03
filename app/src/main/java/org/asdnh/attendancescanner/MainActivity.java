@@ -199,6 +199,7 @@ public class MainActivity extends AppCompatActivity {
                     //Attempt to log in, catch an exception of there is no internet
                     try {
 
+
                         user = SyncUser.login(myCredentials, getAuthUrl());
 
                         //Assign the user created to the class variable
@@ -206,6 +207,20 @@ public class MainActivity extends AppCompatActivity {
 
                         //Login is valid
                         loginGood = true;
+
+
+                        //Recreate the main activity (must be run on the UI thread)
+                        runOnUiThread(new Runnable() {
+
+                            @Override
+                            public void run() {
+
+                                //Recreate main activity after the login is good
+                                Log.i("realm", "Recreating activity");
+                                recreate();
+
+                            }
+                        });
 
                         //Occurs when the user's credentials have expired and internet is not available
                         //Illegal argument happens when the URL is in a bad format
@@ -501,9 +516,9 @@ public class MainActivity extends AppCompatActivity {
             database.beginTransaction();
 
             //Check to see if this sign in is close enough to the departure they probably misclicked
-            if (timeDifference <= 20) {
+            if (timeDifference <= 10) {
 
-                Log.i("realm", "Time difference is < 20 seconds, assuming an accident");
+                Log.i("realm", "Time difference is < 10 seconds, assuming an accident");
                 //Remove the student object from realm
                 tempStudent.deleteFromRealm();
 
